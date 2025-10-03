@@ -1,0 +1,53 @@
+[gd_scene load_steps=9 format=3 uid="uid://cstl47mtex476"]
+
+[ext_resource type="Script" uid="uid://bkibaufktxo1q" path="res://main.gd" id="1_h2yge"]
+[ext_resource type="PackedScene" uid="uid://c31v0n3pj2fm6" path="res://player.tscn" id="1_ig7tw"]
+[ext_resource type="Script" uid="uid://c0j45tkbeq0sl" path="res://camera_3d.gd" id="2_0xm2m"]
+[ext_resource type="Script" uid="uid://b8aryyt054quw" path="res://label.gd" id="4_1bvp3"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7dm0k"]
+size = Vector3(60, 2, 60)
+
+[sub_resource type="ImageTexture" id="ImageTexture_ig7tw"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0xm2m"]
+shading_mode = 0
+diffuse_mode = 1
+specular_mode = 2
+albedo_texture = SubResource("ImageTexture_ig7tw")
+texture_filter = 0
+
+[sub_resource type="BoxMesh" id="BoxMesh_ig7tw"]
+lightmap_size_hint = Vector2i(604, 326)
+material = SubResource("StandardMaterial3D_0xm2m")
+size = Vector3(240, 2, 240)
+
+[node name="Main" type="Node"]
+script = ExtResource("1_h2yge")
+
+[node name="Ground" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("BoxShape3D_7dm0k")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("BoxMesh_ig7tw")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, -0.671837, 0.740699, 0, -0.740699, -0.671837, 0, 23.5699, 0)
+
+[node name="shimwing_abstract" parent="." instance=ExtResource("1_ig7tw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.04801, 0)
+rotation_edit_mode = 0
+motion_mode = 0
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
+script = ExtResource("2_0xm2m")
+
+[node name="Label" type="Label" parent="Camera3D"]
+anchors_preset = -1
+offset_right = 40.0
+offset_bottom = 23.0
+script = ExtResource("4_1bvp3")

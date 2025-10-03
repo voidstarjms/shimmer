@@ -1,0 +1,58 @@
+[gd_scene load_steps=10 format=3 uid="uid://c31v0n3pj2fm6"]
+
+[ext_resource type="Script" uid="uid://st5edse85hp" path="res://player.gd" id="1_4flbx"]
+[ext_resource type="PackedScene" uid="uid://ja452n35vask" path="res://shimwing_abstract.tscn" id="1_onrkg"]
+[ext_resource type="ArrayMesh" uid="uid://c2t4idourgfej" path="res://zealous_jay.obj" id="3_i3pqv"]
+
+[sub_resource type="Image" id="Image_i3pqv"]
+data = {
+"data": PackedByteArray(255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_hqtel"]
+data = {
+"data": PackedByteArray(0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_sweqy"]
+data = {
+"data": PackedByteArray(255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_2hs0m"]
+data = {
+"data": PackedByteArray(0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="ImageTexture3D" id="ImageTexture3D_2hs0m"]
+_images = Array[Image]([SubResource("Image_i3pqv"), SubResource("Image_hqtel"), SubResource("Image_sweqy"), SubResource("Image_2hs0m")])
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1jxqw"]
+albedo_color = Color(0, 0, 1, 1)
+
+[node name="shimwing_abstract" instance=ExtResource("1_onrkg")]
+texture = SubResource("ImageTexture3D_2hs0m")
+
+[node name="player" type="Node3D" parent="." index="0"]
+script = ExtResource("1_4flbx")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." index="1"]
+transform = Transform3D(3.821371e-16, 8.742278e-09, -0.2, 0.2, -8.742278e-09, 0, -8.742278e-09, -0.2, -8.742278e-09, 0, 0, 0)
+material_override = SubResource("StandardMaterial3D_1jxqw")
+mesh = ExtResource("3_i3pqv")
