@@ -45,8 +45,6 @@ var sliding_grip_coef = 0.7
 
 # Physics vectors
 var vel_vec = Vector3.ZERO
-var thr_vel_vec = Vector3.ZERO
-var rel_spd = Vector3.ZERO
 var acc_vec = Vector3.ZERO
 
 # Thrust values
@@ -59,11 +57,11 @@ var thrust_yaw = 0.08
 
 # Drag values
 var drag_airframe = 0.1
-var max_drag_decel = 10
+var max_drag_decel = 0.08
 
 # Poise scalars
-var poise_spring_const = 1
-var poise_damping = 0
+var poise_spring_const = 0.2
+var poise_damping = 0.1
 
 # Poise vectors
 var poise_pos = Vector3.ZERO
@@ -168,13 +166,13 @@ func calc_actual_thrust(arr : Array):
 	# TODO: get rid of magic numbers in here
 	# Main thruster thrust
 	for i in 2:
-		ret_arr.append(sign(arr[i]) * min(abs(main_thrust * arr[i]), grip_main_static * ((1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)))
+		ret_arr.append(main_thrust * arr[i] * (1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)
 	# Vertical thruster thrust
 	for i in range(2, 6):
-		ret_arr.append(sign(arr[i]) * min(abs(vrt_thrust * arr[i]), grip_main_static * ((1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)))
+		ret_arr.append(vrt_thrust * arr[i] * (1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)
 	# Lateral thruster thrust
 	for i in range(6, 10):
-		ret_arr.append(sign(arr[i]) * min(abs(lat_thrust * arr[i]), grip_main_static * ((1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)))
+		ret_arr.append(lat_thrust * arr[i] * (1 + thruster_array[i].toward_vec.dot(poise_pos)) * thruster_array[i].thrust_vec)
 
 	return ret_arr
 
@@ -195,12 +193,6 @@ func _physics_process(_delta: float) -> void:
 	acc_vec = Vector3.ZERO
 	for i in 10:
 		acc_vec += thrust[i]
-	
-	# Factor drag into linear acceleration
-	#var lat_drag = sign(vel_vec.x) * min(abs(vel_vec.x * drag_airframe), max_drag_decel, abs(vel_vec.x))
-	#var vrt_drag = sign(vel_vec.y) * min(abs(vel_vec.y * drag_airframe), max_drag_decel, abs(vel_vec.y))
-	#var lon_drag = sign(vel_vec.z) * min(abs(vel_vec.z * drag_airframe), max_drag_decel, abs(vel_vec.z))
-	#acc_vec = acc_vec + Vector3(lat_drag, vrt_drag, lon_drag)
 
 	# Yaw
 	var yaw_amount_main = thrust[th.main_lt].dot(thruster_array[th.main_lt].thrust_vec) - thrust[th.main_rt].dot(thruster_array[th.main_rt].thrust_vec)
@@ -216,24 +208,22 @@ func _physics_process(_delta: float) -> void:
 	rotate_object_local(Vector3.FORWARD, thrust_roll * (roll_amount_vrt + roll_amount_lat))
 
 	transform = transform.orthonormalized()
-
-	var prev_thr_vel_vec = thr_vel_vec
-	thr_vel_vec += acc_vec
-	# Clamp linear thruster velocity
-	thr_vel_vec.x = clamp(thr_vel_vec.x, -max_spd, max_spd)
-	thr_vel_vec.y = clamp(thr_vel_vec.y, -max_spd, max_spd)
-	thr_vel_vec.z = clamp(thr_vel_vec.z, -max_spd, max_spd)
-	if (vel_vec - transform.basis * thr_vel_vec).length() < grip_main_static or sign(vel_vec - thr_vel_vec) != sign(vel_vec - prev_thr_vel_vec):
-		vel_vec = transform.basis * thr_vel_vec
-	else:
-		vel_vec += grip_main_static * sliding_grip_coef * (transform.basis * acc_vec)
-	# Clamp linear velocity
-	vel_vec.x = clamp(vel_vec.x, -max_spd, max_spd)
-	vel_vec.y = clamp(vel_vec.y, -max_spd, max_spd)
-	vel_vec.z = clamp(vel_vec.z, -max_spd, max_spd)
 	
+	# Accelerate craft
+	var prev_vel_vec = vel_vec
+	vel_vec += transform.basis * acc_vec
+	# Clamp velocity
+	vel_vec = vel_vec.clamp(Vector3.ONE * -max_spd, Vector3.ONE * max_spd)
+	
+	# Apply deceleration
 	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0:
-		vel_vec = vel_vec.lerp(Vector3.ZERO, 0.05)
+		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized()
+		if sign(prev_vel_vec.x) != sign(vel_vec.x):
+			vel_vec.x = 0
+		if sign(prev_vel_vec.y) != sign(vel_vec.y):
+			vel_vec.y = 0
+		if sign(prev_vel_vec.z) != sign(vel_vec.z):
+			vel_vec.z = 0
 	
 	# Assign camera position
 	var cam = get_node("../Camera3D")
@@ -257,10 +247,18 @@ func _physics_process(_delta: float) -> void:
 		cam.transform.basis.y = cam.transform.basis.x.cross(cam.transform.basis.z)
 	
 	# Calculate poise
-	#poise_acc = acc_vec - poise_damping * poise_vel - poise_spring_const * poise_pos
-	#poise_vel += poise_acc
-	#poise_pos += poise_vel
-	#poise_pos = poise_pos.normalized()
+	var poise_acc_undamped = poise_spring_const * (vel_vec - prev_vel_vec) - poise_spring_const * poise_pos
+	poise_acc = poise_acc_undamped - poise_damping * poise_vel
+	if sign(poise_acc.x) != sign(poise_acc_undamped.x):
+		poise_acc.x = 0
+	if sign(poise_acc.y) != sign(poise_acc_undamped.y):
+		poise_acc.y = 0
+	if sign(poise_acc.z) != sign(poise_acc_undamped.z):
+		poise_acc.z = 0
+	poise_vel += poise_acc
+	poise_pos += poise_vel
+	poise_pos = poise_pos.clamp(-1 * Vector3.ONE, Vector3.ONE)
+	print(poise_pos)
 
 	# Move actor
 	velocity = vel_vec
