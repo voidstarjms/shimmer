@@ -36,44 +36,70 @@ var pitch_demand = 0
 var roll_demand = 0
 var yaw_demand = 0
 
-# Physics scalars
-var max_spd = 36
-var grip_main_static = 2
-var grip_vrt_static = 0.4
-var grip_lat_static = 0.4
-var sliding_grip_coef = 0.7
+# Equipment levels
+const engine_max_lvl = 19
+const poiser_max_lvl = 19
+@export var engine_lvl = 0
+@export var poiser_lvl = 0
+# Equipment stat upgrade base values
+const max_spd_base = 24
+const main_thrust_base = 0.2
+const vrt_thrust_base = 0.06
+const lat_thrust_base = 0.06
+const thrust_pitch_base = 0.06
+const thrust_roll_base = 0.06
+const thrust_yaw_base = 0.06
+const poise_spring_const_base = 0.0875
+const poise_damping_base = 0.05
+# Equipment stat upgrade steps
+const max_spd_step = 1
+const main_thrust_step = 0.005
+const strafe_thrust_step = 0.002
+const rotation_thrust_step = 0.001
+const poise_spring_const_step = 0.0059
+const poise_damping_step = 0.0025
+
+# Physics handling scalars
+var max_spd
 
 # Physics vectors
 var vel_vec = Vector3.ZERO
 var acc_vec = Vector3.ZERO
 
 # Thrust values
-var main_thrust = 0.3
-var vrt_thrust = 0.1
-var lat_thrust = 0.1
-var thrust_pitch = 0.08
-var thrust_roll = 0.08
-var thrust_yaw = 0.08
+var main_thrust
+var vrt_thrust
+var lat_thrust
+var thrust_pitch
+var thrust_roll
+var thrust_yaw
 
 # Drag values
 var drag_airframe = 0.1
 var max_drag_decel = 0.08
 
 # Poise scalars
-var poise_spring_const = 0.2
-var poise_damping = 0.1
+var poise_spring_const
+var poise_damping
 
 # Poise vectors
 var poise_pos = Vector3.ZERO
 var poise_vel = Vector3.ZERO
 var poise_acc = Vector3.ZERO
 
-# Camera previous vectors
-var cam_prev_y = Vector3.UP
-var cam_prev_z = Vector3.BACK
+const dash_duration = 60
+var dash_counter = 0
 
-# DEBUG FLAG
-var debug = true
+func compute_handling_stats():
+	max_spd = max_spd_base + max_spd_step * engine_lvl
+	main_thrust = main_thrust_base + main_thrust_step * engine_lvl
+	vrt_thrust = vrt_thrust_base + strafe_thrust_step * engine_lvl
+	lat_thrust = lat_thrust_base + strafe_thrust_step * engine_lvl
+	thrust_pitch = thrust_pitch_base + rotation_thrust_step * engine_lvl
+	thrust_roll = thrust_roll_base + rotation_thrust_step * engine_lvl
+	thrust_yaw = thrust_yaw_base + rotation_thrust_step * engine_lvl
+	poise_spring_const = poise_spring_const_base + poise_spring_const_step * poiser_lvl
+	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
 
 func init_thruster(th_vec, tow_vec, axis):
 	var thr = thruster.new()
@@ -83,6 +109,8 @@ func init_thruster(th_vec, tow_vec, axis):
 	return thr
 
 func _ready() -> void:
+	compute_handling_stats()
+	
 	var th_arr = Array()
 	
 	var th_vec_arr = [Vector3(0, 0, -1), Vector3(0, 0, -1), Vector3(0, 1, 0), Vector3(0, 1, 0), Vector3(0, 1, 0), Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 0), Vector3(1, 0, 0)]
@@ -116,10 +144,21 @@ func demand_roll(x : float):
 func demand_yaw(x : float):
 	yaw_demand = x
 
+# Dash accessor
+func dash():
+	if dash_counter == 0:
+		dash_counter = dash_duration
+
 func calc_pve_thrust():
 	# Main thruster demand
-	var main_lt = lon_demand
-	var main_rt = clamp(lon_demand + yaw_demand, -1, 1)
+	var main_lt
+	var main_rt
+	if dash_counter > 0:
+		main_lt = 2
+		main_rt = 2
+	else:
+		main_lt = lon_demand
+		main_rt = clamp(lon_demand + yaw_demand, -1, 1)
 	# Vertical thruster demand
 	var vrt_fr_lt = clamp(vrt_demand + pitch_demand + roll_demand, -1, 1)
 	var vrt_fr_rt = clamp(vrt_demand + pitch_demand, -1, 1)
@@ -178,13 +217,22 @@ func calc_actual_thrust(arr : Array):
 
 func sum_thrust(thrust : Array, th1 : th, th2 : th):
 	return thrust[th1].dot(thruster_array[th1].thrust_vec) + thrust[th2].dot(thruster_array[th2].thrust_vec)
-	
-func _process(delta: float) -> void:
-	if Input.is_key_pressed(KEY_F1) and debug == true:
-		transform.origin = Vector3.UP
-		transform.basis = Basis.FLIP_Z
 
 func _physics_process(_delta: float) -> void:
+	# NOTE remove after debugging
+	# Recompute max speed
+	max_spd = 24 + max_spd_step * engine_lvl
+	# Recompute thrust values
+	main_thrust = 0.2 + main_thrust_step * engine_lvl
+	vrt_thrust = 0.06 + strafe_thrust_step * engine_lvl
+	lat_thrust = 0.06 + strafe_thrust_step * engine_lvl
+	thrust_pitch = 0.06 + rotation_thrust_step * engine_lvl
+	thrust_roll = 0.06 + rotation_thrust_step * engine_lvl
+	thrust_yaw = 0.06 + rotation_thrust_step * engine_lvl
+	# Recompute poise scalars
+	poise_spring_const = 0.0875 + poise_spring_const_step * poiser_lvl
+	poise_damping = 0.05 + poise_damping_step * poiser_lvl
+	
 	# Calculate thrust from each
 	var thrust_demand = calc_applied_thrust()
 	var thrust = calc_actual_thrust(thrust_demand)
@@ -209,14 +257,29 @@ func _physics_process(_delta: float) -> void:
 
 	transform = transform.orthonormalized()
 	
-	# Accelerate craft
+	# Accelerate craft, taking max speed into account
 	var prev_vel_vec = vel_vec
-	vel_vec += transform.basis * acc_vec
-	# Clamp velocity
-	vel_vec = vel_vec.clamp(Vector3.ONE * -max_spd, Vector3.ONE * max_spd)
+	var actual_max_speed = max_spd * (2 if dash_counter > 0 else 1)
+	var acc_transformed = transform.basis * acc_vec
+	if abs(vel_vec.x) > actual_max_speed:
+		vel_vec.x -= max_drag_decel * sign(vel_vec.x)
+	else:
+		vel_vec.x += acc_transformed.x
+	if abs(vel_vec.y) > actual_max_speed:
+		vel_vec.y -= max_drag_decel * sign(vel_vec.y)
+	else:
+		vel_vec.y += acc_transformed.y
+	if abs(vel_vec.z) > actual_max_speed:
+		vel_vec.z -= max_drag_decel * sign(vel_vec.z)
+	else:
+		vel_vec.z += acc_transformed.z
+
+	# Decrement dash time counter
+	if dash_counter > 0:
+		dash_counter -= 1
 	
 	# Apply deceleration
-	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0:
+	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0 and dash_counter == 0:
 		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized()
 		if sign(prev_vel_vec.x) != sign(vel_vec.x):
 			vel_vec.x = 0
@@ -225,29 +288,10 @@ func _physics_process(_delta: float) -> void:
 		if sign(prev_vel_vec.z) != sign(vel_vec.z):
 			vel_vec.z = 0
 	
-	# Assign camera position
-	var cam = get_node("../Camera3D")
-	if cam != null:
-		# Camera vector interpolation
-		var cam_y_vec = cam_prev_y.lerp(transform.basis.y, 0.1)
-		var cam_z_vec = cam_prev_z.lerp(Vector3.BACK if abs(transform.basis.z.dot(Vector3.UP)) == 1 else lerp(-vel_vec, transform.basis.z, 0.99), 0.1)
-		cam_prev_y = cam_y_vec
-		cam_prev_z = cam_z_vec
-		
-		# Set camera position
-		cam_z_vec = 6 * cam_z_vec.normalized()
-		cam.transform.origin = transform.origin + cam_z_vec + cam_y_vec
-		
-		# Define camera basis
-		cam.transform.basis.z = (-(transform.origin - cam.transform.origin)).normalized()
-		#if abs(transform.basis.z.dot(Vector3.UP)) > 0.86:
-			#var alpha = 0.5 * sqrt(pow(cam.transform.basis.z.x, 2) + pow(cam.transform.basis.z.z, 2))
-			#cam.transform.basis.z = Vector3(cam.transform.basis.z.x * alpha, -sign(cam.transform.basis.z.y) * sqrt(3)/2, cam.transform.basis.z.z)
-		cam.transform.basis.x = cam.transform.basis.z.cross(Vector3.UP)
-		cam.transform.basis.y = cam.transform.basis.x.cross(cam.transform.basis.z)
-	
-	# Calculate poise
-	var poise_acc_undamped = poise_spring_const * (vel_vec - prev_vel_vec) - poise_spring_const * poise_pos
+	## Calculate poise
+	# Calculate undamped poise acceleration
+	var poise_acc_undamped = 0.01 / poise_spring_const * (vel_vec - prev_vel_vec) - poise_spring_const * poise_pos
+	# Apply damping and zero if needed
 	poise_acc = poise_acc_undamped - poise_damping * poise_vel
 	if sign(poise_acc.x) != sign(poise_acc_undamped.x):
 		poise_acc.x = 0
@@ -255,10 +299,19 @@ func _physics_process(_delta: float) -> void:
 		poise_acc.y = 0
 	if sign(poise_acc.z) != sign(poise_acc_undamped.z):
 		poise_acc.z = 0
+	# Integrate velocity and position
 	poise_vel += poise_acc
 	poise_pos += poise_vel
-	poise_pos = poise_pos.clamp(-1 * Vector3.ONE, Vector3.ONE)
-	print(poise_pos)
+	# Clamp poise position
+	if (poise_pos.x > 1 or poise_pos.x < -1):
+		poise_pos.x = sign(poise_pos.x)
+		poise_vel.x = 0
+	if (poise_pos.y > 1 or poise_pos.y < -1):
+		poise_pos.y = sign(poise_pos.y)
+		poise_vel.y = 0
+	if (poise_pos.z > 1 or poise_pos.z < -1):
+		poise_pos.z = sign(poise_pos.z)
+		poise_vel.z = 0
 
 	# Move actor
 	velocity = vel_vec

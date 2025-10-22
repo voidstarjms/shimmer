@@ -2,6 +2,6 @@ extends Label
 
 func _process(delta: float) -> void:
 	var vel_vec = $"../../shimwing_abstract".vel_vec
-	#text = "%f %f %f" % [rel_spd.x, rel_spd.y, rel_spd.z]
-	text = "%s" % [vel_vec]
-	#text = "%s %s %s" % [vel_vec.x == thr_vec.x, vel_vec.y == thr_vec.y, vel_vec.z == thr_vec.z]
+	var eng_lvl = $"../../shimwing_abstract".engine_lvl
+	var poi_lvl = $"../../shimwing_abstract".poiser_lvl
+	text = "Velocity vector: %s \nSpeed: %s\nEngine level: %s\nPoiser level: %s" % [vel_vec, vel_vec.length(), eng_lvl, poi_lvl]
