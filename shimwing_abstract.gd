@@ -144,21 +144,15 @@ func demand_roll(x : float):
 func demand_yaw(x : float):
 	yaw_demand = x
 
-# Dash accessor
+# Dash mutator
 func dash():
 	if dash_counter == 0:
 		dash_counter = dash_duration
 
 func calc_pve_thrust():
 	# Main thruster demand
-	var main_lt
-	var main_rt
-	if dash_counter > 0:
-		main_lt = 2
-		main_rt = 2
-	else:
-		main_lt = lon_demand
-		main_rt = clamp(lon_demand + yaw_demand, -1, 1)
+	var main_lt = lon_demand
+	var main_rt = clamp(lon_demand + yaw_demand, -1, 1)
 	# Vertical thruster demand
 	var vrt_fr_lt = clamp(vrt_demand + pitch_demand + roll_demand, -1, 1)
 	var vrt_fr_rt = clamp(vrt_demand + pitch_demand, -1, 1)
@@ -219,20 +213,6 @@ func sum_thrust(thrust : Array, th1 : th, th2 : th):
 	return thrust[th1].dot(thruster_array[th1].thrust_vec) + thrust[th2].dot(thruster_array[th2].thrust_vec)
 
 func _physics_process(_delta: float) -> void:
-	# NOTE remove after debugging
-	# Recompute max speed
-	max_spd = 24 + max_spd_step * engine_lvl
-	# Recompute thrust values
-	main_thrust = 0.2 + main_thrust_step * engine_lvl
-	vrt_thrust = 0.06 + strafe_thrust_step * engine_lvl
-	lat_thrust = 0.06 + strafe_thrust_step * engine_lvl
-	thrust_pitch = 0.06 + rotation_thrust_step * engine_lvl
-	thrust_roll = 0.06 + rotation_thrust_step * engine_lvl
-	thrust_yaw = 0.06 + rotation_thrust_step * engine_lvl
-	# Recompute poise scalars
-	poise_spring_const = 0.0875 + poise_spring_const_step * poiser_lvl
-	poise_damping = 0.05 + poise_damping_step * poiser_lvl
-	
 	# Calculate thrust from each
 	var thrust_demand = calc_applied_thrust()
 	var thrust = calc_actual_thrust(thrust_demand)
@@ -240,6 +220,8 @@ func _physics_process(_delta: float) -> void:
 	# Calculate linear acceleration
 	acc_vec = Vector3.ZERO
 	for i in 10:
+		if dash_counter > 0 and (i == th.main_lt or i == th.main_rt):
+			acc_vec += 2 * main_thrust * thruster_array[i].thrust_vec
 		acc_vec += thrust[i]
 
 	# Yaw
