@@ -81,17 +81,15 @@ func _process(delta: float) -> void:
 		# Camera vector interpolation
 		var cam_y_vec = cam_prev_y.lerp($"..".transform.basis.y, 0.1)
 		var cam_z_vec = cam_prev_z.lerp(Vector3.BACK if abs($"..".transform.basis.z.dot(Vector3.UP)) == 1 else lerp(-$"..".vel_vec, $"..".transform.basis.z, 0.99), 0.1)
-		cam_prev_y = cam_y_vec
 		cam_prev_z = cam_z_vec
+		cam_prev_y = cam_y_vec
 		
 		# Set camera position
 		cam_z_vec = 6 * cam_z_vec.normalized()
 		cam.transform.origin = $"..".transform.origin + cam_z_vec + cam_y_vec
 		
 		# Define camera basis
-		cam.transform.basis.z = (-($"..".transform.origin - cam.transform.origin)).normalized()
-		#if abs(transform.basis.z.dot(Vector3.UP)) > 0.86:
-			#var alpha = 0.5 * sqrt(pow(cam.transform.basis.z.x, 2) + pow(cam.transform.basis.z.z, 2))
-			#cam.transform.basis.z = Vector3(cam.transform.basis.z.x * alpha, -sign(cam.transform.basis.z.y) * sqrt(3)/2, cam.transform.basis.z.z)
+		#if abs(transform.basis.z.dot(Vector3.UP)) < 0.86:
+		cam.transform.basis.z = cam_z_vec#(-($"..".transform.origin - cam.transform.origin)).normalized()
 		cam.transform.basis.x = cam.transform.basis.z.cross(Vector3.UP)
 		cam.transform.basis.y = cam.transform.basis.x.cross(cam.transform.basis.z)

@@ -25,6 +25,7 @@ class thruster:
 	var thrust_vec : Vector3
 	var toward_vec : Vector3
 	var varying_axis : int
+	var particle_source : GPUParticles3D
 
 var thruster_array = null
 
@@ -39,8 +40,8 @@ var yaw_demand = 0
 # Equipment levels
 const engine_max_lvl = 19
 const poiser_max_lvl = 19
-@export var engine_lvl = 0
-@export var poiser_lvl = 0
+@export var engine_lvl : int
+@export var poiser_lvl : int
 # Equipment stat upgrade base values
 const max_spd_base = 24
 const main_thrust_base = 0.2
@@ -59,6 +60,9 @@ const rotation_thrust_step = 0.001
 const poise_spring_const_step = 0.0059
 const poise_damping_step = 0.0025
 
+const dash_max_spd_multiplier = 2
+const dash_acc_multiplier = 2
+
 # Physics handling scalars
 var max_spd
 
@@ -75,8 +79,7 @@ var thrust_roll
 var thrust_yaw
 
 # Drag values
-var drag_airframe = 0.1
-var max_drag_decel = 0.08
+@export var max_drag_decel : float
 
 # Poise scalars
 var poise_spring_const
@@ -106,6 +109,11 @@ func init_thruster(th_vec, tow_vec, axis):
 	thr.thrust_vec = th_vec
 	thr.toward_vec = tow_vec
 	thr.varying_axis = axis
+	thr.particle_source = GPUParticles3D.new()
+	var p = thr.particle_source
+	p.fixed_fps = 60
+	p.emitting = false
+	
 	return thr
 
 func _ready() -> void:
@@ -220,8 +228,9 @@ func _physics_process(_delta: float) -> void:
 	# Calculate linear acceleration
 	acc_vec = Vector3.ZERO
 	for i in 10:
+		# Apply equal and doubled forward acceleration if dashing
 		if dash_counter > 0 and (i == th.main_lt or i == th.main_rt):
-			acc_vec += 2 * main_thrust * thruster_array[i].thrust_vec
+			acc_vec += dash_acc_multiplier * main_thrust * thruster_array[i].thrust_vec
 		acc_vec += thrust[i]
 
 	# Yaw
@@ -241,7 +250,7 @@ func _physics_process(_delta: float) -> void:
 	
 	# Accelerate craft, taking max speed into account
 	var prev_vel_vec = vel_vec
-	var actual_max_speed = max_spd * (2 if dash_counter > 0 else 1)
+	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)
 	var acc_transformed = transform.basis * acc_vec
 	if abs(vel_vec.x) > actual_max_speed:
 		vel_vec.x -= max_drag_decel * sign(vel_vec.x)

@@ -1,9 +1,10 @@
-[gd_scene load_steps=9 format=3 uid="uid://cstl47mtex476"]
+[gd_scene load_steps=10 format=3 uid="uid://cstl47mtex476"]
 
 [ext_resource type="Script" uid="uid://bkibaufktxo1q" path="res://main.gd" id="1_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c31v0n3pj2fm6" path="res://player.tscn" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://c0j45tkbeq0sl" path="res://camera_3d.gd" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://b8aryyt054quw" path="res://label.gd" id="4_1bvp3"]
+[ext_resource type="Script" uid="uid://bmbs4yirpaspu" path="res://gui.gd" id="5_lquwl"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7dm0k"]
 size = Vector3(60, 2, 60)
@@ -30,6 +31,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=987930981]
 shape = SubResource("BoxShape3D_7dm0k")
+debug_fill = false
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=2108306695]
 mesh = SubResource("BoxMesh_ig7tw")
@@ -37,10 +39,11 @@ mesh = SubResource("BoxMesh_ig7tw")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=536982465]
 transform = Transform3D(1, 0, 0, 0, -0.671837, 0.740699, 0, -0.740699, -0.671837, 0, 23.5699, 0)
 
-[node name="shimwing_abstract" parent="." unique_id=1593607656 instance=ExtResource("1_ig7tw")]
+[node name="ZealousJay" parent="." unique_id=1593607656 instance=ExtResource("1_ig7tw")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.04801, 0)
 rotation_edit_mode = 0
 motion_mode = 0
+max_drag_decel = 0.08
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=540330043]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
@@ -50,3 +53,10 @@ script = ExtResource("2_0xm2m")
 offset_right = 40.0
 offset_bottom = 23.0
 script = ExtResource("4_1bvp3")
+
+[node name="GUI" type="Control" parent="Camera3D" unique_id=1142161839]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 40.0
+offset_bottom = 40.0
+script = ExtResource("5_lquwl")
