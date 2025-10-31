@@ -1,9 +1,9 @@
 extends Control
 
-const pitch_ladder_outer_width = 200
-const pitch_ladder_inner_width = 150
-const pitch_ladder_level_mark_outer_width = 205
-const pitch_ladder_level_mark_inner_width = 225
+var pitch_ladder_outer_width
+var pitch_ladder_inner_width
+var pitch_ladder_level_mark_outer_width
+var pitch_ladder_level_mark_inner_width
 const pi_over_6 = PI / 6
 const pi_over_4 = PI / 4
 const pi_over_2 = PI / 2
@@ -12,8 +12,17 @@ const pitch_mark_increment = 30
 var pitch_marker_text
 var max_pitch_ladder_vert
 
+func _on_window_resized():
+	var window = get_window()
+	pitch_ladder_level_mark_outer_width = window.size.x * 0.18
+	pitch_ladder_level_mark_inner_width = window.size.x * 0.164
+	pitch_ladder_outer_width = window.size.x * 0.16
+	pitch_ladder_inner_width = window.size.x * 0.12
+	max_pitch_ladder_vert = window.size.y * 0.375
+
 func _ready() -> void:
-	max_pitch_ladder_vert = 3 * get_viewport_rect().size.y / 8
+	get_window().size_changed.connect(_on_window_resized)
+	_on_window_resized()
 	var pitch_mark_count = int(180 / pitch_mark_increment) + 1
 	pitch_marker_text = Array()
 	for i in pitch_mark_count:
