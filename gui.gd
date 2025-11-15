@@ -4,31 +4,133 @@ var pitch_ladder_outer_width
 var pitch_ladder_inner_width
 var pitch_ladder_level_mark_outer_width
 var pitch_ladder_level_mark_inner_width
+
 const pi_over_6 = PI / 6
 const pi_over_4 = PI / 4
 const pi_over_2 = PI / 2
 const sqrt2_over_2 = sqrt(2) / 2
 const compass_rose = ["N", "E", "S", "W"]
-## NOTE: this value must not exceed 90 or it will result in div by 0
-const pitch_mark_count = 7
+
+const compass_subdivision_count = 5
+
+const pitch_ladder_position = Vector2(0.18, 0.125)
+const pitch_ladder_size = Vector2(0.64, 0.75)
+const pitch_ladder_level_length = 0.016
+const pitch_ladder_rung_margin = 0.004
+const pitch_ladder_rung_length = 0.04
+const rung_count = 7
+
 var pitch_marker_text
 var max_pitch_ladder_vert
-const compass_subdivision_count = 5
 var compass_text
 var compass_mark_top
 var compass_mark_bottom
 var compass_half_width
+var compass_point_font_size
+
+var pitch_ladder : PitchLadder
+var speed_tape
+var speed_tape_labels : Array[Label]
+
+var gui_color = Color.GREEN
+
+class PitchLadder:
+	var position : Vector2
+	var size : Vector2
+	var level_mark_outer_width# = 0.18
+	var level_mark_inner_width# = 0.164
+	var rung_outer_width# = 0.16
+	var rung_inner_width# = 0.12
+	var max_vert# = 0.375
+	var rung_count
+	var label_list
+	
+	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, labels : Array) -> void:
+		position = pos
+		size = sz
+		level_mark_outer_width = size.x
+		level_mark_inner_width = level_mark_outer_width - lvl_len
+		rung_outer_width = level_mark_inner_width - lvl_margin
+		rung_inner_width = rung_outer_width - rung_len
+		max_vert = size.y / 2
+		rung_count = num_rungs
+		label_list = labels
+	
+	func construct_ladder_array(view_rect : Rect2, raw_fwd : Vector3):
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var sx = size.x * wx
+		var sy = size.y * wy
+		var px = position.x * wx
+		var py = position.y * wy
+		
+		var ret_arr = Array()
+		
+		# Append level marks
+		var level_mark_left = [Vector2(px, py + sy / 2),
+			Vector2(px + wx * level_mark_inner_width, py + sy / 2)]
+		var level_mark_right = [Vector2(px + sx, py + sy / 2),
+			Vector2(px + sx - wx * level_mark_inner_width, py + sy / 2)]
+		ret_arr.append([level_mark_left, level_mark_right])
+		
+		var center = Vector2(px + sx / 2, py + sy / 2)
+		
+		# Append rungs
+		var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
+		for i in rung_count:
+			label_list[i].visible = false
+			var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
+			# Cull rung if angle is out of bounds
+			if (abs(rung_angle) > pi_over_4):
+				continue
+			
+			var rung_vrt_offset = rung_angle / pi_over_4 * max_vert * wy * Vector2.UP
+			label_list[i].visible = true
+			label_list[i].position = center - rung_outer_width * Vector2.RIGHT - rung_vrt_offset
+			
+			var rung_left = [center - rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center - rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
+			var rung_right = [center + rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center + rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
+			print(wx * rung_outer_width * Vector2.RIGHT)
+			ret_arr.append([rung_left, rung_right])
+		
+		return ret_arr
+
+class TapeGuage:
+	var pos : Vector2 # Fraction of screen size
+	var sz : Vector2 # Fraction of screen size
+	var max_value : int
+	var major_tick_freq : int
+	var minor_tick_gap : float # Fraction of screen size
+	var minor_tick_sz : float # Fraction of major tick width
+	var gap_value : int # The value interval between major ticks
+	var major_tick_count : int
+	
+	func _init(p : Vector2, s : Vector2, max_val : int, division : Vector2, minor_sz : float, gap_val : int, view_rect : Rect2):
+		pos = p
+		sz = s
+		max_value = max_val
+		major_tick_freq = int(division.x)
+		minor_tick_gap = division.y
+		minor_tick_sz = minor_sz
+		gap_value = gap_val
+		# This doesn't work because major tick count needs to be dynamically updated
+		var tape_height = view_rect.size.y * sz.y
+		var tick_count = int(tape_height / (tape_height * minor_tick_gap))
+		major_tick_count = tick_count / major_tick_freq
 
 func _on_window_resized():
 	var window = get_window()
-	pitch_ladder_level_mark_outer_width = window.size.x * 0.18
-	pitch_ladder_level_mark_inner_width = window.size.x * 0.164
-	pitch_ladder_outer_width = window.size.x * 0.16
-	pitch_ladder_inner_width = window.size.x * 0.12
-	max_pitch_ladder_vert = window.size.y * 0.375
-	compass_mark_top = window.size.y * 0.02
-	compass_mark_bottom = window.size.y * 0.07
-	compass_half_width = window.size.x * 0.3
+	var wx = window.size.x
+	var wy = window.size.y
+	pitch_ladder_level_mark_outer_width = wx * 0.18
+	pitch_ladder_level_mark_inner_width = wx * 0.164
+	pitch_ladder_outer_width = wx * 0.16
+	pitch_ladder_inner_width = wx * 0.12
+	max_pitch_ladder_vert = wy * 0.375
+	compass_mark_top = wy * 0.02
+	compass_mark_bottom = wy * 0.07
+	compass_half_width = wx * 0.3
+	compass_point_font_size = wy * 0.02
 
 func _ready() -> void:
 	get_window().size_changed.connect(_on_window_resized)
@@ -36,47 +138,134 @@ func _ready() -> void:
 	
 	# Initialize pitch marker text
 	pitch_marker_text = Array()
-	for i in pitch_mark_count:
+	for i in rung_count:
 		var label = Label.new()
-		label.text = str(90 - i * 180 / (pitch_mark_count - 1))
-		label.add_theme_color_override("green", Color.GREEN)
+		label.text = str(90 - i * 180 / (rung_count - 1))
+		label.set("theme_override_colors/font_color", gui_color)
 		pitch_marker_text.append(label)
 		add_child(label)
+	pitch_ladder = PitchLadder.new(Vector2(0.18, 0.125), Vector2(0.64, 0.75), 0.016, 0.004, 0.04, 7, pitch_marker_text)
 		
 	# Initialize heading indicator text
 	compass_text = Array()
 	for i in 4:
-		var label = Label.new()
+		var label = RichTextLabel.new()
 		label.text = compass_rose[i]
+		label.theme = Theme.new()
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		label.size = Vector2(40, 56)
+		label.add_theme_font_size_override("normal_font_size", 40)
+		label.add_theme_color_override("color", gui_color)
 		compass_text.append(label)
 		add_child(label)
+		
+	# Initialize speed tape
+	speed_tape = TapeGuage.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 20, get_viewport_rect())
+	speed_tape_labels = []
+	for i in speed_tape.major_tick_count + 1:
+		var label = Label.new()
+		label.set("theme_override_colors/font_color", gui_color)
+		speed_tape_labels.append(label)
+		add_child(label)
+
+func construct_tape_gauge_array(gauge : TapeGuage, label_arr : Array, left : bool, metered_value : float):
+	var w = get_viewport_rect()
+	var wx = w.size.x
+	var wy = w.size.y
+	
+	# Extract members from TapeGuage object
+	var tape_pos = gauge.pos
+	var tape_sz = gauge.sz
+	var tape_max_value = gauge.max_value
+	var tape_major_tick_freq = gauge.major_tick_freq
+	var tape_minor_tick_gap = gauge.minor_tick_gap
+	var tape_minor_tick_sz = gauge.minor_tick_sz
+	var tape_gap_value = gauge.gap_value
+	
+	# Derive measurements
+	var tape_width = wx * tape_sz.x
+	var tape_height = wy * tape_sz.y
+	var tick_count = int(tape_height / (tape_height * tape_minor_tick_gap))
+	var tick_gap_absolute = int(tape_minor_tick_gap * tape_height)
+	var x_absolute = tape_pos.x * wx
+	var y_absolute = tape_pos.y * wy
+	metered_value = min(metered_value, tape_max_value)
+	
+	var mark_arr = Array()
+	for i in tick_count + tape_major_tick_freq:
+		var is_major_tick = i % tape_major_tick_freq == 0
+		if is_major_tick == true:
+			label_arr[i / tape_major_tick_freq].visible = false
+		
+		# Compute mark offset, cull if out of bounds
+		var metered_val_offset = tick_gap_absolute * i + ((tape_gap_value * -int(metered_value) % (tape_major_tick_freq * tick_gap_absolute)) - tape_gap_value * fposmod(metered_value, 1))
+		if metered_val_offset < 0 or metered_val_offset >= tape_height:
+			continue
+		
+		var tick_width = tape_width
+		if is_major_tick == false:
+			tick_width *= tape_minor_tick_sz
+		else:
+			label_arr[i / tape_major_tick_freq].visible = true
+		
+		# Compute tick mark vertices
+		var tick_start
+		var tick_end
+		if left == true:
+			tick_start = Vector2(x_absolute, y_absolute + tape_height - metered_val_offset)
+			tick_end = Vector2(x_absolute + tick_width, y_absolute + tape_height - metered_val_offset)
+		else:
+			tick_start = Vector2(x_absolute + tape_width - tick_width, y_absolute + metered_val_offset)
+			tick_end = Vector2(x_absolute + tape_width, y_absolute + metered_val_offset)
+		
+		if is_major_tick == true:
+			label_arr[i / tape_major_tick_freq].position = tick_end
+			if label_arr[i / tape_major_tick_freq].position.y > tape_height + tape_pos.y:
+				pass#label_arr.push_back(label_arr.pop_front())
+			label_arr[i / tape_major_tick_freq].text = str((i / tape_major_tick_freq) * tape_gap_value / tape_major_tick_freq * tape_major_tick_freq)
+		mark_arr.append([tick_start, tick_end])
+	
+	return mark_arr
 
 func _process(delta: float) -> void:
 	queue_redraw()
 	
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
+	var wx = view_rect.size.x
+	var wy = view_rect.size.y
 	var view_center = Vector2(view_rect.size.x / 2, view_rect.size.y / 2)
 	var raw_fwd = -$"../../ZealousJay".transform.basis.z
 	
 	## Draw pitch ladder
+	#var pitch_ladder_data = pitch_ladder.construct_ladder_array(view_rect, raw_fwd)
+	#draw_line(pitch_ladder_data[0][0][0], pitch_ladder_data[0][0][1], gui_color)
+	#draw_line(pitch_ladder_data[0][1][0], pitch_ladder_data[0][1][1], gui_color)
+	#pitch_ladder_data.pop_front()
+	#
+	#for i in pitch_ladder_data:
+		##print(i[0][0])
+		##print(i[0][1])
+		#draw_line(i[0][0], i[0][1], gui_color)
+		#draw_line(i[1][0], i[1][1], gui_color)
+	
 	var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
-	for i in pitch_mark_count:
+	for i in rung_count:
 		pitch_marker_text[i].visible = false
-		var rung_angle = pitch_angle + (6.0 / (pitch_mark_count - 1) * pi_over_6 * i - pi_over_2)
+		var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
 		if (abs(rung_angle) > pi_over_4):
 			continue
 		var pitch_ladder_vrt_offset = rung_angle / pi_over_4 * max_pitch_ladder_vert * Vector2.UP
 		pitch_marker_text[i].visible = true
 		pitch_marker_text[i].position = view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset
-		draw_line(view_center - pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center - pitch_ladder_level_mark_inner_width * Vector2.RIGHT, Color.GREEN)
-		draw_line(view_center + pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center + pitch_ladder_level_mark_inner_width * Vector2.RIGHT, Color.GREEN)
-		draw_line(view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center - pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, Color.GREEN)
-		draw_line(view_center + pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center + pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, Color.GREEN)
+		draw_line(view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center - pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
+		draw_line(view_center + pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center + pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
+	draw_line(view_center - pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center - pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
+	draw_line(view_center + pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center + pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
 
 	## Draw heading indicator
 	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
-	var heading_angle = acos(heading_vec.dot(Vector3.FORWARD)) if heading_vec.dot(Vector3.LEFT) >= 0 else PI + acos(heading_vec.dot(Vector3.BACK))
 	for i in 4:
 		compass_text[i].visible = false
 	for i in 4 * compass_subdivision_count:
@@ -89,6 +278,13 @@ func _draw() -> void:
 		if i % compass_subdivision_count == 0:
 			var current_compass_text = compass_text[(i / compass_subdivision_count) % 4]
 			current_compass_text.visible = true
-			current_compass_text.position = Vector2(view_rect.size.x / 2, compass_mark_top) + marker_horiz_offset
+			current_compass_text.position = Vector2(wx / 2, compass_mark_top) + marker_horiz_offset - Vector2((current_compass_text.size.x - 10) / 2, 0)
 		else:
-			draw_line(Vector2(view_rect.size.x / 2, compass_mark_top) + marker_horiz_offset, Vector2(view_rect.size.x / 2, compass_mark_bottom) + marker_horiz_offset, Color.GREEN)
+			draw_line(Vector2(view_rect.size.x / 2, compass_mark_top) + marker_horiz_offset, Vector2(view_rect.size.x / 2, compass_mark_bottom) + marker_horiz_offset, gui_color)
+
+	## Draw speed tape
+	#var speed_tape_array = construct_tape_gauge_array(speed_tape, speed_tape_labels, true, $"../../ZealousJay".vel_vec.length() * 3.6)
+	#for i in speed_tape_array:
+		#draw_line(i[0], i[1], gui_color)
+		#
+	#draw_line(Vector2(wx / 2, 0), Vector2(wx / 2, 100), gui_color)

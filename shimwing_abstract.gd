@@ -26,6 +26,12 @@ class thruster:
 	var toward_vec : Vector3
 	var varying_axis : int
 	var particle_source : GPUParticles3D
+	
+	func _init(thrust, toward, axis):
+		thrust_vec = thrust
+		toward_vec = toward
+		varying_axis = axis
+		particle_source = GPUParticles3D.new()
 
 var thruster_array = null
 
@@ -105,11 +111,7 @@ func compute_handling_stats():
 	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
 
 func init_thruster(th_vec, tow_vec, axis):
-	var thr = thruster.new()
-	thr.thrust_vec = th_vec
-	thr.toward_vec = tow_vec
-	thr.varying_axis = axis
-	thr.particle_source = GPUParticles3D.new()
+	var thr = thruster.new(th_vec, tow_vec, axis)
 	var p = thr.particle_source
 	p.fixed_fps = 60
 	p.emitting = false
