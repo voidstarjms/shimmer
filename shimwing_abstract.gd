@@ -32,6 +32,8 @@ class thruster:
 		toward_vec = toward
 		varying_axis = axis
 		particle_source = GPUParticles3D.new()
+		particle_source.emitting = false
+		particle_source.fixed_fps = 60
 
 var thruster_array = null
 
@@ -97,7 +99,13 @@ var poise_vel = Vector3.ZERO
 var poise_acc = Vector3.ZERO
 
 const dash_duration = 60
-var dash_counter = 0
+var dash_counter = 0.0
+
+var inactionable_timer = 0
+func set_inactionable_timer(time : int) -> void:
+	inactionable_timer = time
+func actionable() -> bool:
+	return inactionable_timer == 0
 
 func compute_handling_stats():
 	max_spd = max_spd_base + max_spd_step * engine_lvl
@@ -110,14 +118,6 @@ func compute_handling_stats():
 	poise_spring_const = poise_spring_const_base + poise_spring_const_step * poiser_lvl
 	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
 
-func init_thruster(th_vec, tow_vec, axis):
-	var thr = thruster.new(th_vec, tow_vec, axis)
-	var p = thr.particle_source
-	p.fixed_fps = 60
-	p.emitting = false
-	
-	return thr
-
 func _ready() -> void:
 	compute_handling_stats()
 	
@@ -128,13 +128,13 @@ func _ready() -> void:
 	
 	# Main thrusters
 	for i in 2:
-		th_arr.append(init_thruster(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.lon))
+		th_arr.append(thruster.new(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.lon))
 	# Vertical thrusters
 	for i in range(2, 6):
-		th_arr.append(init_thruster(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.vrt))
+		th_arr.append(thruster.new(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.vrt))
 	# Lateral thrusters
 	for i in range(6, 10):
-		th_arr.append(init_thruster(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.lat))
+		th_arr.append(thruster.new(th_vec_arr[i].normalized(), tow_vec_arr[i].normalized(), ax.lat))
 	
 	thruster_array = th_arr
 	
@@ -234,6 +234,7 @@ func _physics_process(_delta: float) -> void:
 		if dash_counter > 0 and (i == th.main_lt or i == th.main_rt):
 			acc_vec += dash_acc_multiplier * main_thrust * thruster_array[i].thrust_vec
 		acc_vec += thrust[i]
+	acc_vec *= Engine.time_scale
 
 	# Yaw
 	var yaw_amount_main = thrust[th.main_lt].dot(thruster_array[th.main_lt].thrust_vec) - thrust[th.main_rt].dot(thruster_array[th.main_rt].thrust_vec)
@@ -255,25 +256,25 @@ func _physics_process(_delta: float) -> void:
 	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)
 	var acc_transformed = transform.basis * acc_vec
 	if abs(vel_vec.x) > actual_max_speed:
-		vel_vec.x -= max_drag_decel * sign(vel_vec.x)
+		vel_vec.x -= max_drag_decel * sign(vel_vec.x) * Engine.time_scale
 	else:
-		vel_vec.x += acc_transformed.x
+		vel_vec.x += acc_transformed.x * Engine.time_scale
 	if abs(vel_vec.y) > actual_max_speed:
-		vel_vec.y -= max_drag_decel * sign(vel_vec.y)
+		vel_vec.y -= max_drag_decel * sign(vel_vec.y) * Engine.time_scale
 	else:
-		vel_vec.y += acc_transformed.y
+		vel_vec.y += acc_transformed.y * Engine.time_scale
 	if abs(vel_vec.z) > actual_max_speed:
-		vel_vec.z -= max_drag_decel * sign(vel_vec.z)
+		vel_vec.z -= max_drag_decel * sign(vel_vec.z) * Engine.time_scale
 	else:
-		vel_vec.z += acc_transformed.z
+		vel_vec.z += acc_transformed.z * Engine.time_scale
 
 	# Decrement dash time counter
 	if dash_counter > 0:
-		dash_counter -= 1
+		dash_counter -= Engine.time_scale
 	
 	# Apply deceleration
 	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0 and dash_counter == 0:
-		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized()
+		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized()  * Engine.time_scale
 		if sign(prev_vel_vec.x) != sign(vel_vec.x):
 			vel_vec.x = 0
 		if sign(prev_vel_vec.y) != sign(vel_vec.y):
@@ -293,8 +294,8 @@ func _physics_process(_delta: float) -> void:
 	if sign(poise_acc.z) != sign(poise_acc_undamped.z):
 		poise_acc.z = 0
 	# Integrate velocity and position
-	poise_vel += poise_acc
-	poise_pos += poise_vel
+	poise_vel += poise_acc * Engine.time_scale
+	poise_pos += poise_vel * Engine.time_scale
 	# Clamp poise position
 	if (poise_pos.x > 1 or poise_pos.x < -1):
 		poise_pos.x = sign(poise_pos.x)
@@ -317,3 +318,7 @@ func _physics_process(_delta: float) -> void:
 	pitch_demand = 0
 	roll_demand = 0
 	yaw_demand = 0
+	
+	# Decrement inactionable timer
+	if inactionable_timer > 0:
+		inactionable_timer -= Engine.time_scale

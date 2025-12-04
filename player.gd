@@ -74,6 +74,7 @@ func _process(delta: float) -> void:
 	# Dash
 	if Input.is_action_just_pressed("dash"):
 		$"..".dash()
+		#get_node("../..").set_slomo(0.2, [10, 30, 30])
 		
 	## Assign camera position
 	var cam = get_node("../../Camera3D")
