@@ -101,6 +101,9 @@ var poise_acc = Vector3.ZERO
 const dash_duration = 60
 var dash_counter = 0.0
 
+@export var max_health : int
+var health
+
 var inactionable_timer = 0
 func set_inactionable_timer(time : int) -> void:
 	inactionable_timer = time
@@ -139,6 +142,8 @@ func _ready() -> void:
 	thruster_array = th_arr
 	
 	transform.basis = Basis.FLIP_Z
+	
+	health = max_health
 
 # Movement demand accessors
 func demand_lon(x : float):
@@ -222,6 +227,9 @@ func calc_actual_thrust(arr : Array):
 func sum_thrust(thrust : Array, th1 : th, th2 : th):
 	return thrust[th1].dot(thruster_array[th1].thrust_vec) + thrust[th2].dot(thruster_array[th2].thrust_vec)
 
+func take_damage(amount : int):
+	health -= amount
+
 func _physics_process(_delta: float) -> void:
 	# Calculate thrust from each
 	var thrust_demand = calc_applied_thrust()
@@ -297,19 +305,30 @@ func _physics_process(_delta: float) -> void:
 	poise_vel += poise_acc * Engine.time_scale
 	poise_pos += poise_vel * Engine.time_scale
 	# Clamp poise position
-	if (poise_pos.x > 1 or poise_pos.x < -1):
+	if abs(poise_pos.x) > 1:
 		poise_pos.x = sign(poise_pos.x)
 		poise_vel.x = 0
-	if (poise_pos.y > 1 or poise_pos.y < -1):
+	if abs(poise_pos.y) > 1:
 		poise_pos.y = sign(poise_pos.y)
 		poise_vel.y = 0
-	if (poise_pos.z > 1 or poise_pos.z < -1):
+	if abs(poise_pos.z) > 1:
 		poise_pos.z = sign(poise_pos.z)
 		poise_vel.z = 0
 
-	# Move actor
-	velocity = vel_vec
-	move_and_slide()
+	# Move actor and collide
+	var collision = move_and_collide(vel_vec * _delta)
+	if collision:
+		var collision_normal = collision.get_normal()
+		var vel_dot_normal = vel_vec.normalized().dot(collision_normal)
+		if vel_dot_normal < 0:
+			# Inflict crash damage based on angle of impact
+			take_damage(floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length()))
+			vel_vec = vel_vec.slide(collision_normal)
+			if vel_vec != Vector3.ZERO:
+				transform.basis = Basis.looking_at(lerp(-transform.basis.z,
+					-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
+				# Why is this necessary?
+				transform.basis.x *= -1
 
 	# Clear demand values
 	lon_demand = 0

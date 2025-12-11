@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://cstl47mtex476"]
+[gd_scene format=3 uid="uid://cstl47mtex476"]
 
 [ext_resource type="Script" uid="uid://bkibaufktxo1q" path="res://main.gd" id="1_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c31v0n3pj2fm6" path="res://player.tscn" id="1_ig7tw"]
@@ -7,7 +7,7 @@
 [ext_resource type="Script" uid="uid://bmbs4yirpaspu" path="res://gui.gd" id="5_lquwl"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7dm0k"]
-size = Vector3(60, 2, 60)
+size = Vector3(300, 2, 300)
 
 [sub_resource type="ImageTexture" id="ImageTexture_ig7tw"]
 
@@ -21,7 +21,20 @@ texture_filter = 0
 [sub_resource type="BoxMesh" id="BoxMesh_ig7tw"]
 lightmap_size_hint = Vector2i(604, 326)
 material = SubResource("StandardMaterial3D_0xm2m")
-size = Vector3(240, 2, 240)
+size = Vector3(300, 2, 300)
+
+[sub_resource type="ImageTexture" id="ImageTexture_lquwl"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7mycd"]
+albedo_texture = SubResource("ImageTexture_lquwl")
+texture_filter = 0
+
+[sub_resource type="BoxMesh" id="BoxMesh_272bh"]
+material = SubResource("StandardMaterial3D_7mycd")
+size = Vector3(200, 200, 200)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_lquwl"]
+size = Vector3(200, 200, 200)
 
 [node name="Main" type="Node" unique_id=1411892718]
 script = ExtResource("1_h2yge")
@@ -31,7 +44,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=987930981]
 shape = SubResource("BoxShape3D_7dm0k")
-debug_fill = false
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=2108306695]
 mesh = SubResource("BoxMesh_ig7tw")
@@ -40,9 +52,11 @@ mesh = SubResource("BoxMesh_ig7tw")
 transform = Transform3D(1, 0, 0, 0, -0.671837, 0.740699, 0, -0.740699, -0.671837, 0, 23.5699, 0)
 
 [node name="ZealousJay" parent="." unique_id=1593607656 instance=ExtResource("1_ig7tw")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.04801, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 120, -200)
 rotation_edit_mode = 0
 motion_mode = 0
+engine_lvl = 0
+poiser_lvl = 0
 max_drag_decel = 0.08
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=540330043]
@@ -60,3 +74,12 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("5_lquwl")
+
+[node name="BigCube" type="StaticBody3D" parent="." unique_id=1471078892]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 100, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="BigCube" unique_id=1262753019]
+mesh = SubResource("BoxMesh_272bh")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="BigCube" unique_id=1519246724]
+shape = SubResource("BoxShape3D_lquwl")

@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://c31v0n3pj2fm6"]
+[gd_scene format=3 uid="uid://c31v0n3pj2fm6"]
 
 [ext_resource type="Script" uid="uid://st5edse85hp" path="res://player.gd" id="1_4flbx"]
 [ext_resource type="PackedScene" uid="uid://ja452n35vask" path="res://shimwing_abstract.tscn" id="1_onrkg"]
@@ -46,13 +46,24 @@ _images = Array[Image]([SubResource("Image_i3pqv"), SubResource("Image_hqtel"), 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1jxqw"]
 albedo_color = Color(0, 0, 1, 1)
 
-[node name="shimwing_abstract" instance=ExtResource("1_onrkg")]
-texture = SubResource("ImageTexture3D_2hs0m")
+[sub_resource type="BoxShape3D" id="BoxShape3D_1jxqw"]
+size = Vector3(0.4020996, 0.29406738, 1.8138428)
 
-[node name="player" type="Node3D" parent="." index="0"]
+[node name="shimwing_abstract" unique_id=513372077 instance=ExtResource("1_onrkg")]
+texture = SubResource("ImageTexture3D_2hs0m")
+engine_lvl = 0
+poiser_lvl = 0
+max_drag_decel = 0.0
+max_health = 100
+
+[node name="player" type="Node3D" parent="." index="0" unique_id=265813478]
 script = ExtResource("1_4flbx")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." index="1"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." index="1" unique_id=1089269929]
 transform = Transform3D(3.821371e-16, 8.742278e-09, -0.2, 0.2, -8.742278e-09, 0, -8.742278e-09, -0.2, -8.742278e-09, 0, 0, 0)
 material_override = SubResource("StandardMaterial3D_1jxqw")
 mesh = ExtResource("3_i3pqv")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." index="3" unique_id=303521201]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003540039, -0.02154541, -0.090148926)
+shape = SubResource("BoxShape3D_1jxqw")
