@@ -4,6 +4,7 @@ extends Node3D
 var debug = true
 var debug_F2_tap = false
 var debug_F3_tap = false
+var debug_F5_tap = false
 
 var cam_prev_y = Vector3.UP
 var cam_prev_z = Vector3.BACK
@@ -20,11 +21,11 @@ func _process(delta: float) -> void:
 		if Input.is_key_pressed(KEY_F2) and debug_F2_tap == false:
 			debug_F2_tap = true
 			if Input.is_key_pressed(KEY_SHIFT):
-				if $"..".engine_lvl > 0:
-					$"..".engine_lvl -= 1
+				if $"..".clutch_lvl > 0:
+					$"..".clutch_lvl -= 1
 			else:
-				if $"..".engine_lvl < $"..".engine_max_lvl:
-					$"..".engine_lvl += 1
+				if $"..".clutch_lvl < $"..".clutch_max_lvl:
+					$"..".clutch_lvl += 1
 			$"..".compute_handling_stats()
 		if !Input.is_key_pressed(KEY_F2):
 			debug_F2_tap = false
@@ -32,7 +33,7 @@ func _process(delta: float) -> void:
 		if Input.is_key_pressed(KEY_F3) and debug_F3_tap == false:
 			debug_F3_tap = true
 			if Input.is_key_label_pressed(KEY_SHIFT):
-				if $"..".poiser_lvl < $"..".poiser_max_lvl:
+				if $"..".poiser_lvl > 0:
 					$"..".poiser_lvl -= 1
 			else:
 				if $"..".poiser_lvl < $"..".poiser_max_lvl:
@@ -40,6 +41,19 @@ func _process(delta: float) -> void:
 			$"..".compute_handling_stats()
 		if !Input.is_key_pressed(KEY_F3):
 			debug_F3_tap = false
+		# change armor level
+		if Input.is_key_pressed(KEY_F5) and debug_F5_tap == false:
+			debug_F5_tap = true
+			if Input.is_key_label_pressed(KEY_SHIFT):
+				if $"..".armor_lvl > 0:
+					$"..".armor_lvl -= 1
+			else:
+				if $"..".armor_lvl < $"..".armor_max_lvl:
+					$"..".armor_lvl += 1
+			$"..".compute_handling_stats()
+			$"..".health = $"..".max_health
+		if !Input.is_key_pressed(KEY_F5):
+			debug_F5_tap = false
 	
 	# Longitudinal thrust
 	if Input.is_action_pressed("thrust_forward"):
@@ -70,7 +84,7 @@ func _process(delta: float) -> void:
 		$"..".demand_yaw(Input.get_action_strength("yaw_right"))
 	if Input.is_action_pressed("yaw_left"):
 		$"..".demand_yaw(-Input.get_action_strength("yaw_left"))
-		
+	
 	# Dash
 	if Input.is_action_just_pressed("dash"):
 		$"..".dash()

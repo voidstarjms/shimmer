@@ -51,10 +51,6 @@ size = Vector3(0.4020996, 0.29406738, 1.8138428)
 
 [node name="shimwing_abstract" unique_id=513372077 instance=ExtResource("1_onrkg")]
 texture = SubResource("ImageTexture3D_2hs0m")
-engine_lvl = 0
-poiser_lvl = 0
-max_drag_decel = 0.0
-max_health = 100
 
 [node name="player" type="Node3D" parent="." index="0" unique_id=265813478]
 script = ExtResource("1_4flbx")

@@ -46,10 +46,12 @@ var roll_demand = 0
 var yaw_demand = 0
 
 # Equipment levels
-const engine_max_lvl = 19
+const clutch_max_lvl = 19
 const poiser_max_lvl = 19
-@export var engine_lvl : int
+const armor_max_lvl = 19
+@export var clutch_lvl : int
 @export var poiser_lvl : int
+@export var armor_lvl : int
 # Equipment stat upgrade base values
 const max_spd_base = 24
 const main_thrust_base = 0.2
@@ -60,6 +62,7 @@ const thrust_roll_base = 0.06
 const thrust_yaw_base = 0.06
 const poise_spring_const_base = 0.0875
 const poise_damping_base = 0.05
+const max_health_base = 100
 # Equipment stat upgrade steps
 const max_spd_step = 1
 const main_thrust_step = 0.005
@@ -67,6 +70,7 @@ const strafe_thrust_step = 0.002
 const rotation_thrust_step = 0.001
 const poise_spring_const_step = 0.0059
 const poise_damping_step = 0.0025
+const max_health_step = 20
 
 const dash_max_spd_multiplier = 2
 const dash_acc_multiplier = 2
@@ -111,15 +115,16 @@ func actionable() -> bool:
 	return inactionable_timer == 0
 
 func compute_handling_stats():
-	max_spd = max_spd_base + max_spd_step * engine_lvl
-	main_thrust = main_thrust_base + main_thrust_step * engine_lvl
-	vrt_thrust = vrt_thrust_base + strafe_thrust_step * engine_lvl
-	lat_thrust = lat_thrust_base + strafe_thrust_step * engine_lvl
-	thrust_pitch = thrust_pitch_base + rotation_thrust_step * engine_lvl
-	thrust_roll = thrust_roll_base + rotation_thrust_step * engine_lvl
-	thrust_yaw = thrust_yaw_base + rotation_thrust_step * engine_lvl
+	max_spd = max_spd_base + max_spd_step * clutch_lvl
+	main_thrust = main_thrust_base + main_thrust_step * clutch_lvl
+	vrt_thrust = vrt_thrust_base + strafe_thrust_step * clutch_lvl
+	lat_thrust = lat_thrust_base + strafe_thrust_step * clutch_lvl
+	thrust_pitch = thrust_pitch_base + rotation_thrust_step * clutch_lvl
+	thrust_roll = thrust_roll_base + rotation_thrust_step * clutch_lvl
+	thrust_yaw = thrust_yaw_base + rotation_thrust_step * clutch_lvl
 	poise_spring_const = poise_spring_const_base + poise_spring_const_step * poiser_lvl
 	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
+	max_health = max_health_base + max_health_step * armor_lvl
 
 func _ready() -> void:
 	compute_handling_stats()

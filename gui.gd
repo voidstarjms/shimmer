@@ -31,6 +31,7 @@ var compass_point_font_size
 var pitch_ladder : PitchLadder
 var speed_tape
 var speed_tape_labels : Array[Label]
+var health_bar : BarGauge
 
 var gui_color = Color.GREEN
 
@@ -90,7 +91,7 @@ class PitchLadder:
 			
 			var rung_left = [center - rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center - rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
 			var rung_right = [center + rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center + rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
-			print(wx * rung_outer_width * Vector2.RIGHT)
+			# print(wx * rung_outer_width * Vector2.RIGHT)
 			ret_arr.append([rung_left, rung_right])
 		
 		return ret_arr
@@ -117,6 +118,153 @@ class TapeGuage:
 		var tape_height = view_rect.size.y * sz.y
 		var tick_count = int(tape_height / (tape_height * minor_tick_gap))
 		major_tick_count = tick_count / major_tick_freq
+
+class BarGauge:
+	var pos : Vector2 # Fraction of screen size
+	var sz : Vector2 # Fraction of screen size
+	var lo_color : Color
+	var hi_color : Color
+	var value : int
+	var max_value : int
+	var bar1_display_value : int
+	var bar2_display_value : int
+	var bezel_margin : float # Fraction of screen size
+	var bezel_color : Color # Any color with alpha = 0 indicates no bezel
+	var segment_count : int # 0 indicates to use value-dependent division
+	var segment_value : int
+	var bar1_increment_rate : int # 0 is instant
+	var bar2_increment_rate : int # <= 0 is instant (i.e. no bar2)
+	var bar2_color : Color
+	var flash_threshold : float # fraction of max_value, 0 means never flash
+	var flash_time : int
+	var flash_duty : float
+	var flash_counter : int
+	
+	func _init(position : Vector2, size : Vector2, bar1_colors : Array[Color], max_val : int, inc_rate : int = 0):
+		pos = position
+		sz = size
+		lo_color = bar1_colors[0]
+		hi_color = bar1_colors[1]
+		max_value = max_val
+		value = max_val
+		bar1_display_value = max_val
+		bar2_display_value = max_val
+		bar1_increment_rate = inc_rate
+		
+		# Default bezel and segment parameters
+		set_framing()
+		
+		# Default bar2 parameters
+		set_bar2()
+		
+		# Default flash parameters
+		set_flash()
+	
+	func set_framing(margin : float = 0, color : Color = Color(0, 0, 0, 0), seg_count : int = 1, seg_value : int = 0):
+		bezel_margin = margin
+		bezel_color = color
+		segment_count = seg_count
+		segment_value = seg_value
+	
+	func set_bar2(inc_rate : int = -1, color : Color = Color(0, 0, 0, 0)):
+		bar2_increment_rate = inc_rate
+		bar2_color = color
+	
+	func set_flash(threshold : float = 0, time : int = 0, duty : float = 0.0):
+		flash_threshold = threshold
+		flash_time = time
+		flash_duty = duty
+	
+	func _make_bar(view_rect : Rect2, val : int) -> Rect2:
+		if float(value) / max_value <= flash_threshold and float(flash_counter) / flash_time > flash_duty:
+			return Rect2()
+		
+		val = min(val, max_value)
+		
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var bar_percent = float(val) / max_value
+		
+		return Rect2(Vector2(pos.x * wx, pos.y * wy),
+			Vector2(sz.x * wx * bar_percent, sz.y * wy))
+	
+	func get_bar1(view_rect : Rect2) -> Rect2:
+		return _make_bar(view_rect, bar1_display_value)
+	
+	func get_bar2(view_rect : Rect2) -> Rect2:
+		return _make_bar(view_rect, bar2_display_value)
+	
+	func get_bar1_color() -> Color:
+		return lerp(lo_color, hi_color, float(value) / max_value)
+	
+	func get_bar2_color() -> Color:
+		return bar2_color
+	
+	func get_bezel_rect(view_rect : Rect2) -> Rect2:
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var aspect_ratio = wx / wy
+		var margin_vec = Vector2(bezel_margin * wx, bezel_margin * wy * aspect_ratio)
+		var position = Vector2(pos.x * wx, pos.y * wy)
+		var size = Vector2(sz.x * wx, sz.y * wy)
+		return Rect2(position - margin_vec, size + 2 * margin_vec)
+	
+	func get_bezel_color() -> Color:
+		return bezel_color
+	
+	func get_segment_lines(view_rect : Rect2) -> Array:
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var segment_list = Array()
+		
+		if segment_count == 1:
+			return segment_list
+		var bezel_rect = get_bezel_rect(view_rect)
+		var bezel_x = bezel_rect.position.x
+		var bezel_y = bezel_rect.position.y
+		var bezel_h = bezel_rect.size.y
+		if segment_count == 0:
+			var i = segment_value
+			while i < max_value:
+				var seg_x = sz.x + bezel_x + i * wx * sz.x / max_value
+				var seg_top = Vector2(seg_x, bezel_y)
+				var seg_bot = Vector2(seg_x, bezel_y + bezel_h)
+				segment_list.append([seg_top, seg_bot])
+				i += segment_value
+		else:
+			for i in range(1, segment_count):
+				var seg_x = sz.x + bezel_x + i * wx * sz.x / segment_count
+				var seg_top = Vector2(seg_x, bezel_y)
+				var seg_bot = Vector2(seg_x, bezel_y + bezel_h)
+				segment_list.append([seg_top, seg_bot])
+		
+		return segment_list
+	
+	# Decrement bars if necessary, update flash counter
+	func step():
+		if flash_time > 0:
+			flash_counter = (flash_counter + 1) % flash_time
+		
+		if bar1_increment_rate == 0:
+			bar1_display_value = value
+		elif bar1_display_value > value:
+			bar1_display_value = max(bar1_display_value - bar1_increment_rate, value)
+		elif bar1_display_value < value:
+			bar1_display_value = min(bar1_display_value + bar1_increment_rate, value)
+		
+		if bar2_increment_rate <= 0:
+			return
+		if bar2_display_value > value:
+			bar2_display_value = max(bar2_display_value - bar2_increment_rate, value)
+		elif bar2_display_value < value:
+			bar2_display_value = min(bar2_display_value + bar2_increment_rate, value)
+		return
+	
+	func set_value(val : int):
+		value = max(val, 0)
+	
+	func set_max_value(val : int):
+		max_value = val
 
 func _on_window_resized():
 	var window = get_window()
@@ -168,6 +316,11 @@ func _ready() -> void:
 		label.set("theme_override_colors/font_color", gui_color)
 		speed_tape_labels.append(label)
 		add_child(label)
+	
+	health_bar = BarGauge.new(Vector2(0.3, 0.95), Vector2(0.4, 0.03), [Color.RED, Color.GREEN], 0)
+	health_bar.set_framing(0.002, Color.GREEN, 0, 20)
+	health_bar.set_bar2(1, Color.WHITE)
+	health_bar.set_flash(0.2, 30, 0.7)
 
 func construct_tape_gauge_array(gauge : TapeGuage, label_arr : Array, left : bool, metered_value : float):
 	var w = get_viewport_rect()
@@ -230,7 +383,10 @@ func construct_tape_gauge_array(gauge : TapeGuage, label_arr : Array, left : boo
 
 func _process(delta: float) -> void:
 	queue_redraw()
-	
+
+func update_health_bar(val : int) -> void:
+	health_bar.set_value(val)
+
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
 	var wx = view_rect.size.x
@@ -288,3 +444,17 @@ func _draw() -> void:
 		#draw_line(i[0], i[1], gui_color)
 		#
 	#draw_line(Vector2(wx / 2, 0), Vector2(wx / 2, 100), gui_color)
+	
+	## Draw health bar
+	health_bar.set_value($"../../ZealousJay".health)
+	health_bar.set_max_value($"../../ZealousJay".max_health)
+	var health_bar_disp1 = health_bar.get_bar1(view_rect)
+	var health_bar_disp2 = health_bar.get_bar2(view_rect)
+	var health_bar_bezel = health_bar.get_bezel_rect(view_rect)
+	var health_bar_segments = health_bar.get_segment_lines(view_rect)
+	draw_rect(health_bar_disp2, health_bar.get_bar2_color())
+	draw_rect(health_bar_disp1, health_bar.get_bar1_color())
+	draw_rect(health_bar_bezel, health_bar.get_bezel_color(), false)
+	for i in health_bar_segments:
+		draw_line(i[0], i[1], Color.GREEN)
+	health_bar.step()

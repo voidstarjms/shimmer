@@ -55,8 +55,6 @@ transform = Transform3D(1, 0, 0, 0, -0.671837, 0.740699, 0, -0.740699, -0.671837
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 120, -200)
 rotation_edit_mode = 0
 motion_mode = 0
-engine_lvl = 0
-poiser_lvl = 0
 max_drag_decel = 0.08
 
 [node name="Camera3D" type="Camera3D" parent="." unique_id=540330043]
