@@ -139,6 +139,7 @@ class BarGauge:
 	var flash_time : int
 	var flash_duty : float
 	var flash_counter : int
+	var flash_observer_list : Array
 	
 	func _init(position : Vector2, size : Vector2, bar1_colors : Array[Color], max_val : int, inc_rate : int = 0):
 		pos = position
@@ -150,6 +151,7 @@ class BarGauge:
 		bar1_display_value = max_val
 		bar2_display_value = max_val
 		bar1_increment_rate = inc_rate
+		flash_observer_list
 		
 		# Default bezel and segment parameters
 		set_framing()
@@ -242,6 +244,8 @@ class BarGauge:
 	
 	# Decrement bars if necessary, update flash counter
 	func step():
+		if float(value) / max_value <= flash_threshold and flash_counter == 0:
+			update_observers()
 		if flash_time > 0:
 			flash_counter = (flash_counter + 1) % flash_time
 		
@@ -265,6 +269,13 @@ class BarGauge:
 	
 	func set_max_value(val : int):
 		max_value = val
+	
+	func add_observer(obj : Node):
+		flash_observer_list.append(obj)
+	
+	func update_observers():
+		for i in flash_observer_list:
+			i.update()
 
 func _on_window_resized():
 	var window = get_window()
@@ -293,7 +304,7 @@ func _ready() -> void:
 		pitch_marker_text.append(label)
 		add_child(label)
 	pitch_ladder = PitchLadder.new(Vector2(0.18, 0.125), Vector2(0.64, 0.75), 0.016, 0.004, 0.04, 7, pitch_marker_text)
-		
+	
 	# Initialize heading indicator text
 	compass_text = Array()
 	for i in 4:
@@ -321,6 +332,7 @@ func _ready() -> void:
 	health_bar.set_framing(0.002, Color.GREEN, 0, 20)
 	health_bar.set_bar2(1, Color.WHITE)
 	health_bar.set_flash(0.2, 30, 0.7)
+	health_bar.add_observer($"./GUI_health_beep")
 
 func construct_tape_gauge_array(gauge : TapeGuage, label_arr : Array, left : bool, metered_value : float):
 	var w = get_viewport_rect()

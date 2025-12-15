@@ -5,6 +5,8 @@
 [ext_resource type="Script" uid="uid://c0j45tkbeq0sl" path="res://camera_3d.gd" id="2_0xm2m"]
 [ext_resource type="Script" uid="uid://b8aryyt054quw" path="res://label.gd" id="4_1bvp3"]
 [ext_resource type="Script" uid="uid://bmbs4yirpaspu" path="res://gui.gd" id="5_lquwl"]
+[ext_resource type="AudioStream" uid="uid://dd4ewnlok47ht" path="res://health_beep.wav" id="6_272bh"]
+[ext_resource type="Script" uid="uid://lwfiefwdiw7w" path="res://gui_health_beep.gd" id="7_5vw27"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_7dm0k"]
 size = Vector3(300, 2, 300)
@@ -72,6 +74,11 @@ anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
 script = ExtResource("5_lquwl")
+
+[node name="GUI_health_beep" type="AudioStreamPlayer3D" parent="Camera3D/GUI" unique_id=291089892]
+stream = ExtResource("6_272bh")
+bus = &"GUI"
+script = ExtResource("7_5vw27")
 
 [node name="BigCube" type="StaticBody3D" parent="." unique_id=1471078892]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 100, 0)
