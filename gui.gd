@@ -13,15 +13,6 @@ const compass_rose = ["N", "E", "S", "W"]
 
 const compass_subdivision_count = 5
 
-const pitch_ladder_position = Vector2(0.18, 0.125)
-const pitch_ladder_size = Vector2(0.64, 0.75)
-const pitch_ladder_level_length = 0.016
-const pitch_ladder_rung_margin = 0.004
-const pitch_ladder_rung_length = 0.04
-const rung_count = 7
-
-var pitch_marker_text
-var max_pitch_ladder_vert
 var compass_text
 var compass_mark_top
 var compass_mark_bottom
@@ -38,24 +29,34 @@ var gui_color = Color.GREEN
 class PitchLadder:
 	var position : Vector2
 	var size : Vector2
-	var level_mark_outer_width# = 0.18
 	var level_mark_inner_width# = 0.164
+	var level_mark_len
+	var level_mark_margin
 	var rung_outer_width# = 0.16
 	var rung_inner_width# = 0.12
+	var rung_length
 	var max_vert# = 0.375
 	var rung_count
 	var label_list
 	
-	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, labels : Array) -> void:
+	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, color : Color, parent : Node) -> void:
 		position = pos
 		size = sz
-		level_mark_outer_width = size.x
-		level_mark_inner_width = level_mark_outer_width - lvl_len
-		rung_outer_width = level_mark_inner_width - lvl_margin
+		level_mark_len = lvl_len
+		level_mark_margin = lvl_margin
+		rung_length = rung_len
+		rung_outer_width = size.x / 2 - level_mark_len - lvl_margin
 		rung_inner_width = rung_outer_width - rung_len
 		max_vert = size.y / 2
 		rung_count = num_rungs
-		label_list = labels
+		# Initialize pitch marker text
+		label_list = Array()
+		for i in rung_count:
+			var label = Label.new()
+			label.text = str(90 - i * 180 / (rung_count - 1))
+			label.set("theme_override_colors/font_color", color)
+			label_list.append(label)
+			parent.add_child(label)
 	
 	func construct_ladder_array(view_rect : Rect2, raw_fwd : Vector3):
 		var wx = view_rect.size.x
@@ -69,9 +70,9 @@ class PitchLadder:
 		
 		# Append level marks
 		var level_mark_left = [Vector2(px, py + sy / 2),
-			Vector2(px + wx * level_mark_inner_width, py + sy / 2)]
+			Vector2(px + wx * level_mark_len, py + sy / 2)]
 		var level_mark_right = [Vector2(px + sx, py + sy / 2),
-			Vector2(px + sx - wx * level_mark_inner_width, py + sy / 2)]
+			Vector2(px + sx - wx * level_mark_len, py + sy / 2)]
 		ret_arr.append([level_mark_left, level_mark_right])
 		
 		var center = Vector2(px + sx / 2, py + sy / 2)
@@ -85,13 +86,16 @@ class PitchLadder:
 			if (abs(rung_angle) > pi_over_4):
 				continue
 			
+			var rung_outer_vec = rung_outer_width * wx * Vector2.RIGHT
+			var rung_inner_vec = rung_inner_width * wx * Vector2.RIGHT
+			
 			var rung_vrt_offset = rung_angle / pi_over_4 * max_vert * wy * Vector2.UP
 			label_list[i].visible = true
-			label_list[i].position = center - rung_outer_width * Vector2.RIGHT - rung_vrt_offset
+			label_list[i].position = center - rung_outer_vec - rung_vrt_offset
+			print(label_list[i].position)
 			
-			var rung_left = [center - rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center - rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
-			var rung_right = [center + rung_outer_width * Vector2.RIGHT - rung_vrt_offset, center + rung_inner_width * Vector2.RIGHT - rung_vrt_offset]
-			# print(wx * rung_outer_width * Vector2.RIGHT)
+			var rung_left = [center - rung_outer_vec - rung_vrt_offset, center - rung_inner_vec - rung_vrt_offset]
+			var rung_right = [center + rung_outer_vec - rung_vrt_offset, center + rung_inner_vec - rung_vrt_offset]
 			ret_arr.append([rung_left, rung_right])
 		
 		return ret_arr
@@ -281,11 +285,6 @@ func _on_window_resized():
 	var window = get_window()
 	var wx = window.size.x
 	var wy = window.size.y
-	pitch_ladder_level_mark_outer_width = wx * 0.18
-	pitch_ladder_level_mark_inner_width = wx * 0.164
-	pitch_ladder_outer_width = wx * 0.16
-	pitch_ladder_inner_width = wx * 0.12
-	max_pitch_ladder_vert = wy * 0.375
 	compass_mark_top = wy * 0.02
 	compass_mark_bottom = wy * 0.07
 	compass_half_width = wx * 0.3
@@ -295,15 +294,7 @@ func _ready() -> void:
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
 	
-	# Initialize pitch marker text
-	pitch_marker_text = Array()
-	for i in rung_count:
-		var label = Label.new()
-		label.text = str(90 - i * 180 / (rung_count - 1))
-		label.set("theme_override_colors/font_color", gui_color)
-		pitch_marker_text.append(label)
-		add_child(label)
-	pitch_ladder = PitchLadder.new(Vector2(0.18, 0.125), Vector2(0.64, 0.75), 0.016, 0.004, 0.04, 7, pitch_marker_text)
+	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.125), Vector2(0.4, 0.75), 0.016, 0.004, 0.04, 7, gui_color, get_node("."))
 	
 	# Initialize heading indicator text
 	compass_text = Array()
@@ -406,31 +397,29 @@ func _draw() -> void:
 	var view_center = Vector2(view_rect.size.x / 2, view_rect.size.y / 2)
 	var raw_fwd = -$"../../ZealousJay".transform.basis.z
 	
-	## Draw pitch ladder
-	#var pitch_ladder_data = pitch_ladder.construct_ladder_array(view_rect, raw_fwd)
-	#draw_line(pitch_ladder_data[0][0][0], pitch_ladder_data[0][0][1], gui_color)
-	#draw_line(pitch_ladder_data[0][1][0], pitch_ladder_data[0][1][1], gui_color)
-	#pitch_ladder_data.pop_front()
-	#
-	#for i in pitch_ladder_data:
-		##print(i[0][0])
-		##print(i[0][1])
-		#draw_line(i[0][0], i[0][1], gui_color)
-		#draw_line(i[1][0], i[1][1], gui_color)
+	# Draw pitch ladder
+	var pitch_ladder_data = pitch_ladder.construct_ladder_array(view_rect, raw_fwd)
+	draw_line(pitch_ladder_data[0][0][0], pitch_ladder_data[0][0][1], gui_color)
+	draw_line(pitch_ladder_data[0][1][0], pitch_ladder_data[0][1][1], gui_color)
+	pitch_ladder_data.pop_front()
 	
-	var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
-	for i in rung_count:
-		pitch_marker_text[i].visible = false
-		var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
-		if (abs(rung_angle) > pi_over_4):
-			continue
-		var pitch_ladder_vrt_offset = rung_angle / pi_over_4 * max_pitch_ladder_vert * Vector2.UP
-		pitch_marker_text[i].visible = true
-		pitch_marker_text[i].position = view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset
-		draw_line(view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center - pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
-		draw_line(view_center + pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center + pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
-	draw_line(view_center - pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center - pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
-	draw_line(view_center + pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center + pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
+	for i in pitch_ladder_data:
+		draw_line(i[0][0], i[0][1], gui_color)
+		draw_line(i[1][0], i[1][1], gui_color)
+	
+	#var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
+	#for i in rung_count:
+		#pitch_marker_text[i].visible = false
+		#var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
+		#if (abs(rung_angle) > pi_over_4):
+			#continue
+		#var pitch_ladder_vrt_offset = rung_angle / pi_over_4 * max_pitch_ladder_vert * Vector2.UP
+		#pitch_marker_text[i].visible = true
+		#pitch_marker_text[i].position = view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset
+		#draw_line(view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center - pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
+		#draw_line(view_center + pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center + pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
+	#draw_line(view_center - pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center - pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
+	#draw_line(view_center + pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center + pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
 
 	## Draw heading indicator
 	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()

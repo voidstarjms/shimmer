@@ -9,14 +9,28 @@ var debug_F5_tap = false
 var cam_prev_y = Vector3.UP
 var cam_prev_z = Vector3.BACK
 
+var start_pos
+
+func respawn():
+	$"..".transform.origin = Vector3.UP
+	$"..".transform.basis = Basis.FLIP_Z
+	$"..".vel_vec = Vector3.ZERO
+	$"..".acc_vec = Vector3.ZERO
+	$"..".poise_acc = Vector3.ZERO
+	$"..".poise_vel = Vector3.ZERO
+	$"..".poise_pos = Vector3.ZERO
+	$"..".health = $"..".max_health
+	$"..".position = start_pos
+	$"..".set_inactionable_timer(30)
+
+func _ready() -> void:
+	start_pos = $"..".position
+
 func _process(delta: float) -> void:
 	if debug == true:
 		# reset orientation
 		if Input.is_key_pressed(KEY_F1):
-			$"..".transform.origin = Vector3.UP
-			$"..".transform.basis = Basis.FLIP_Z
-			$"..".vel_vec = Vector3.ZERO
-			$"..".acc_vec = Vector3.ZERO
+			respawn()
 		# change engine level
 		if Input.is_key_pressed(KEY_F2) and debug_F2_tap == false:
 			debug_F2_tap = true
@@ -45,11 +59,11 @@ func _process(delta: float) -> void:
 		if Input.is_key_pressed(KEY_F5) and debug_F5_tap == false:
 			debug_F5_tap = true
 			if Input.is_key_label_pressed(KEY_SHIFT):
-				if $"..".armor_lvl > 0:
-					$"..".armor_lvl -= 1
+				if $"..".deflector_lvl > 0:
+					$"..".deflector_lvl -= 1
 			else:
-				if $"..".armor_lvl < $"..".armor_max_lvl:
-					$"..".armor_lvl += 1
+				if $"..".deflector_lvl < $"..".deflector_max_lvl:
+					$"..".deflector_lvl += 1
 			$"..".compute_handling_stats()
 			$"..".health = $"..".max_health
 		if !Input.is_key_pressed(KEY_F5):

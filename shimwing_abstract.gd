@@ -48,10 +48,10 @@ var yaw_demand = 0
 # Equipment levels
 const clutch_max_lvl = 19
 const poiser_max_lvl = 19
-const armor_max_lvl = 19
+const deflector_max_lvl = 19
 @export var clutch_lvl : int
 @export var poiser_lvl : int
-@export var armor_lvl : int
+@export var deflector_lvl : int
 # Equipment stat upgrade base values
 const max_spd_base = 24
 const main_thrust_base = 0.2
@@ -90,6 +90,9 @@ var thrust_pitch
 var thrust_roll
 var thrust_yaw
 
+# Thrust arrays
+var thrust_demand
+
 # Drag values
 @export var max_drag_decel : float
 
@@ -124,7 +127,7 @@ func compute_handling_stats():
 	thrust_yaw = thrust_yaw_base + rotation_thrust_step * clutch_lvl
 	poise_spring_const = poise_spring_const_base + poise_spring_const_step * poiser_lvl
 	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
-	max_health = max_health_base + max_health_step * armor_lvl
+	max_health = max_health_base + max_health_step * deflector_lvl
 
 func _ready() -> void:
 	compute_handling_stats()
@@ -149,6 +152,9 @@ func _ready() -> void:
 	transform.basis = Basis.FLIP_Z
 	
 	health = max_health
+	
+	thrust_demand = Array()
+	thrust_demand.resize(10)
 
 # Movement demand accessors
 func demand_lon(x : float):
@@ -202,17 +208,14 @@ func calc_nve_thrust():
 	var lat_rr_lw = roll_demand
 	
 	return [main_lt, main_rt, vrt_fr_lt, vrt_fr_rt, vrt_rr_lt, vrt_rr_rt, lat_fr_up, lat_fr_lw, lat_rr_up, lat_rr_lw]
-	
-func calc_applied_thrust():
+
+func calc_applied_thrust(thrust_demand : Array):
 	var pve = calc_pve_thrust()
 	var nve = calc_nve_thrust()
-	var arr = Array()
 	
 	for i in 10:
-		arr.append(pve[i] - nve[i])
-	
-	return arr
-	
+		thrust_demand[i] = pve[i] - nve[i]
+
 func calc_actual_thrust(arr : Array):
 	var ret_arr = Array()
 	
@@ -234,10 +237,17 @@ func sum_thrust(thrust : Array, th1 : th, th2 : th):
 
 func take_damage(amount : int):
 	health -= amount
+	if health <= 0:
+		var player = get_node("./player")
+		if player != null:
+			player.respawn()
 
 func _physics_process(_delta: float) -> void:
-	# Calculate thrust from each
-	var thrust_demand = calc_applied_thrust()
+	# Get thrust demand
+	thrust_demand.fill(0)
+	# Calculate thrust from each if actionable
+	if inactionable_timer == 0:
+		calc_applied_thrust(thrust_demand)
 	var thrust = calc_actual_thrust(thrust_demand)
 	
 	# Calculate linear acceleration
@@ -246,7 +256,8 @@ func _physics_process(_delta: float) -> void:
 		# Apply equal and doubled forward acceleration if dashing
 		if dash_counter > 0 and (i == th.main_lt or i == th.main_rt):
 			acc_vec += dash_acc_multiplier * main_thrust * thruster_array[i].thrust_vec
-		acc_vec += thrust[i]
+		else:
+			acc_vec += thrust[i]
 	acc_vec *= Engine.time_scale
 
 	# Yaw
