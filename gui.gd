@@ -1,10 +1,5 @@
 extends Control
 
-var pitch_ladder_outer_width
-var pitch_ladder_inner_width
-var pitch_ladder_level_mark_outer_width
-var pitch_ladder_level_mark_inner_width
-
 const pi_over_6 = PI / 6
 const pi_over_4 = PI / 4
 const pi_over_2 = PI / 2
@@ -26,9 +21,25 @@ var health_bar : BarGauge
 
 var gui_color = Color.GREEN
 
-class PitchLadder:
-	var position : Vector2
-	var size : Vector2
+class TextScalable extends Node:
+	var label_list
+	var base_label_size
+	var base_font_size
+	
+	func resize_text(view_rect : Rect2):
+		for i in label_list:
+			var scale = view_rect.size.x / base_label_size.x
+			var scaled_size : int = floor(base_font_size * scale)
+			print(scaled_size)
+			
+			if scaled_size > 4096:
+				continue
+			
+			i.add_theme_font_size_override("font_size", scaled_size)
+
+class PitchLadder extends TextScalable:
+	var position
+	var size
 	var level_mark_inner_width# = 0.164
 	var level_mark_len
 	var level_mark_margin
@@ -37,9 +48,8 @@ class PitchLadder:
 	var rung_length
 	var max_vert# = 0.375
 	var rung_count
-	var label_list
 	
-	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, color : Color, parent : Node) -> void:
+	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, color : Color, view_rect : Rect2) -> void:
 		position = pos
 		size = sz
 		level_mark_len = lvl_len
@@ -49,14 +59,19 @@ class PitchLadder:
 		rung_inner_width = rung_outer_width - rung_len
 		max_vert = size.y / 2
 		rung_count = num_rungs
+		
 		# Initialize pitch marker text
 		label_list = Array()
 		for i in rung_count:
-			var label = Label.new()
+			var label : Label = Label.new()
 			label.text = str(90 - i * 180 / (rung_count - 1))
 			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
-			parent.add_child(label)
+			self.add_child(label)
+			# Singleton to initialize base label and font size
+			if i == 0:
+				base_label_size = view_rect.size
+				base_font_size = label.get_theme_font_size("font_size", label.get_class())
 	
 	func construct_ladder_array(view_rect : Rect2, raw_fwd : Vector3):
 		var wx = view_rect.size.x
@@ -92,7 +107,6 @@ class PitchLadder:
 			var rung_vrt_offset = rung_angle / pi_over_4 * max_vert * wy * Vector2.UP
 			label_list[i].visible = true
 			label_list[i].position = center - rung_outer_vec - rung_vrt_offset
-			print(label_list[i].position)
 			
 			var rung_left = [center - rung_outer_vec - rung_vrt_offset, center - rung_inner_vec - rung_vrt_offset]
 			var rung_right = [center + rung_outer_vec - rung_vrt_offset, center + rung_inner_vec - rung_vrt_offset]
@@ -100,7 +114,18 @@ class PitchLadder:
 		
 		return ret_arr
 
-class TapeGuage:
+class HeadingGauge extends TextScalable:
+	var pos : Vector2 # Fraction of screen size
+	var sz : Vector2 # Fraction of screen size
+	var subdivision_count
+	
+	func _init(p : Vector2, s : Vector2, subdiv_count : int, base_fnt_sz : int):
+		pos = p
+		sz = s
+		subdivision_count = subdiv_count
+		base_font_size = base_fnt_sz
+
+class TapeGauge extends TextScalable:
 	var pos : Vector2 # Fraction of screen size
 	var sz : Vector2 # Fraction of screen size
 	var max_value : int
@@ -118,7 +143,7 @@ class TapeGuage:
 		minor_tick_gap = division.y
 		minor_tick_sz = minor_sz
 		gap_value = gap_val
-		# This doesn't work because major tick count needs to be dynamically updated
+		# TODO This doesn't work because major tick count needs to be dynamically updated
 		var tape_height = view_rect.size.y * sz.y
 		var tick_count = int(tape_height / (tape_height * minor_tick_gap))
 		major_tick_count = tick_count / major_tick_freq
@@ -155,7 +180,6 @@ class BarGauge:
 		bar1_display_value = max_val
 		bar2_display_value = max_val
 		bar1_increment_rate = inc_rate
-		flash_observer_list
 		
 		# Default bezel and segment parameters
 		set_framing()
@@ -285,16 +309,15 @@ func _on_window_resized():
 	var window = get_window()
 	var wx = window.size.x
 	var wy = window.size.y
+	pitch_ladder.resize_text(get_viewport_rect())
 	compass_mark_top = wy * 0.02
 	compass_mark_bottom = wy * 0.07
 	compass_half_width = wx * 0.3
 	compass_point_font_size = wy * 0.02
 
 func _ready() -> void:
-	get_window().size_changed.connect(_on_window_resized)
-	_on_window_resized()
-	
-	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.125), Vector2(0.4, 0.75), 0.016, 0.004, 0.04, 7, gui_color, get_node("."))
+	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.125), Vector2(0.4, 0.75), 0.016, 0.004, 0.04, 7, gui_color, get_viewport_rect())
+	self.add_child(pitch_ladder)
 	
 	# Initialize heading indicator text
 	compass_text = Array()
@@ -311,7 +334,7 @@ func _ready() -> void:
 		add_child(label)
 		
 	# Initialize speed tape
-	speed_tape = TapeGuage.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 20, get_viewport_rect())
+	speed_tape = TapeGauge.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 20, get_viewport_rect())
 	speed_tape_labels = []
 	for i in speed_tape.major_tick_count + 1:
 		var label = Label.new()
@@ -324,8 +347,11 @@ func _ready() -> void:
 	health_bar.set_bar2(1, Color.WHITE)
 	health_bar.set_flash(0.2, 30, 0.7)
 	health_bar.add_observer($"./GUI_health_beep")
+	
+	get_window().size_changed.connect(_on_window_resized)
+	_on_window_resized()
 
-func construct_tape_gauge_array(gauge : TapeGuage, label_arr : Array, left : bool, metered_value : float):
+func construct_tape_gauge_array(gauge : TapeGauge, label_arr : Array, left : bool, metered_value : float):
 	var w = get_viewport_rect()
 	var wx = w.size.x
 	var wy = w.size.y
@@ -407,20 +433,6 @@ func _draw() -> void:
 		draw_line(i[0][0], i[0][1], gui_color)
 		draw_line(i[1][0], i[1][1], gui_color)
 	
-	#var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
-	#for i in rung_count:
-		#pitch_marker_text[i].visible = false
-		#var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
-		#if (abs(rung_angle) > pi_over_4):
-			#continue
-		#var pitch_ladder_vrt_offset = rung_angle / pi_over_4 * max_pitch_ladder_vert * Vector2.UP
-		#pitch_marker_text[i].visible = true
-		#pitch_marker_text[i].position = view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset
-		#draw_line(view_center - pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center - pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
-		#draw_line(view_center + pitch_ladder_outer_width * Vector2.RIGHT - pitch_ladder_vrt_offset, view_center + pitch_ladder_inner_width * Vector2.RIGHT - pitch_ladder_vrt_offset, gui_color)
-	#draw_line(view_center - pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center - pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
-	#draw_line(view_center + pitch_ladder_level_mark_outer_width * Vector2.RIGHT, view_center + pitch_ladder_level_mark_inner_width * Vector2.RIGHT, gui_color)
-
 	## Draw heading indicator
 	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
 	for i in 4:
