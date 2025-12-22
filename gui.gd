@@ -345,9 +345,6 @@ class BarGauge:
 			i.update()
 
 func _on_window_resized():
-	var window = get_window()
-	var wx = window.size.x
-	var wy = window.size.y
 	pitch_ladder.resize_text(get_viewport_rect())
 	heading_indicator.resize_text(get_viewport_rect())
 
@@ -359,7 +356,7 @@ func _ready() -> void:
 	self.add_child(heading_indicator)
 	
 	# Initialize speed tape
-	speed_tape = TapeGauge.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 20, get_viewport_rect())
+	speed_tape = TapeGauge.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 2, get_viewport_rect())
 	speed_tape_labels = []
 	for i in speed_tape.major_tick_count + 1:
 		var label = Label.new()
@@ -406,7 +403,7 @@ func construct_tape_gauge_array(gauge : TapeGauge, label_arr : Array, left : boo
 			label_arr[i / tape_major_tick_freq].visible = false
 		
 		# Compute mark offset, cull if out of bounds
-		var metered_val_offset = tick_gap_absolute * i + ((tape_gap_value * -int(metered_value) % (tape_major_tick_freq * tick_gap_absolute)) - tape_gap_value * fposmod(metered_value, 1))
+		var metered_val_offset = tick_gap_absolute * i - fposmod(tick_gap_absolute * tape_major_tick_freq / tape_gap_value * metered_value, (tick_gap_absolute * tape_major_tick_freq))
 		if metered_val_offset < 0 or metered_val_offset >= tape_height:
 			continue
 		
@@ -430,7 +427,7 @@ func construct_tape_gauge_array(gauge : TapeGauge, label_arr : Array, left : boo
 			label_arr[i / tape_major_tick_freq].position = tick_end
 			if label_arr[i / tape_major_tick_freq].position.y > tape_height + tape_pos.y:
 				pass#label_arr.push_back(label_arr.pop_front())
-			label_arr[i / tape_major_tick_freq].text = str((i / tape_major_tick_freq) * tape_gap_value / tape_major_tick_freq * tape_major_tick_freq)
+			label_arr[i / tape_major_tick_freq].text = str(int(float(i) / tape_major_tick_freq * tape_gap_value) + max(int(metered_value / tape_major_tick_freq) - tape_gap_value, 0) * tape_major_tick_freq)
 		mark_arr.append([tick_start, tick_end])
 	
 	return mark_arr
@@ -463,8 +460,8 @@ func _draw() -> void:
 		if i != null:
 			draw_line(i[0], i[1], gui_color)
 
-	## Draw speed tape
-	var speed_tape_array = construct_tape_gauge_array(speed_tape, speed_tape_labels, true, $"../../ZealousJay".vel_vec.length() * 3.6)
+	# Draw speed tape
+	var speed_tape_array = construct_tape_gauge_array(speed_tape, speed_tape_labels, true, $"../../ZealousJay".vel_vec.length())
 	for i in speed_tape_array:
 		draw_line(i[0], i[1], gui_color)
 	

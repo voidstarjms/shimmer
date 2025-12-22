@@ -173,6 +173,7 @@ func demand_yaw(x : float):
 # Dash mutator
 func dash():
 	if dash_counter == 0:
+		$"./sfx_dash".playing = true
 		dash_counter = dash_duration
 
 func calc_pve_thrust():
@@ -238,6 +239,7 @@ func sum_thrust(thrust : Array, th1 : th, th2 : th):
 func take_damage(amount : int):
 	health -= amount
 	if health <= 0:
+		$"./sfx_dead".playing = true
 		var player = get_node("./player")
 		if player != null:
 			player.respawn()
@@ -338,7 +340,10 @@ func _physics_process(_delta: float) -> void:
 		var vel_dot_normal = vel_vec.normalized().dot(collision_normal)
 		if vel_dot_normal < 0:
 			# Inflict crash damage based on angle of impact
-			take_damage(floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length()))
+			var crash_damage = floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length())
+			if crash_damage > 0:
+				$"./sfx_dmg_crash".playing = true
+				take_damage(crash_damage)
 			vel_vec = vel_vec.slide(collision_normal)
 			if vel_vec != Vector3.ZERO:
 				transform.basis = Basis.looking_at(lerp(-transform.basis.z,
