@@ -28,6 +28,7 @@ class TextScalable extends Node:
 				continue
 			
 			i.add_theme_font_size_override("font_size", scaled_size)
+			i.add_theme_font_size_override("normal_font_size", scaled_size)
 
 class PitchLadder extends TextScalable:
 	var position
@@ -115,19 +116,19 @@ class HeadingGauge extends TextScalable:
 		pos = p
 		sz = s
 		subdivision_count = subdiv_count
-		base_font_size = base_fnt_sz
+		base_font_size = 1
 		
 		label_list = Array()
 		for i in 4:
 			var label = RichTextLabel.new()
 			label.text = compass_rose[i]
 			label.theme = Theme.new()
-			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			label.size = Vector2(base_fnt_sz, 1.4 * base_fnt_sz)
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			label.size = Vector2(base_fnt_sz, 1.5 * base_fnt_sz)
 			if i == 0:
 				base_label_size = label.size
-			label.add_theme_font_size_override("normal_font_size", 40)
+			label.add_theme_font_size_override("normal_font_size", base_font_size)
 			label.add_theme_color_override("default_color", color)
 			label_list.append(label)
 			add_child(label)
@@ -154,9 +155,11 @@ class HeadingGauge extends TextScalable:
 			
 			if i % subdivision_count == 0:
 				ret_arr.append(null)
-				var current_compass_text = label_list[(i / subdivision_count) % 4]
+				var current_compass_text : RichTextLabel = label_list[(i / subdivision_count) % 4]
 				current_compass_text.visible = true
-				current_compass_text.position = Vector2(wx / 2, py) + marker_horiz_offset - Vector2((current_compass_text.size.x - 10) / 2, 0)
+				var fnt_size = current_compass_text.get_theme_font_size("normal_font_size")
+				current_compass_text.size = Vector2(fnt_size, fnt_size * 1.5)
+				current_compass_text.position = Vector2(wx / 2, py) + marker_horiz_offset - Vector2((0.75 * current_compass_text.size.x) / 2, 0)
 			else:
 				ret_arr.append([Vector2(wx / 2, py) + marker_horiz_offset, Vector2(wx / 2, py + sy) + marker_horiz_offset])
 		
