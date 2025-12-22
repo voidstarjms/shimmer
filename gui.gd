@@ -6,15 +6,8 @@ const pi_over_2 = PI / 2
 const sqrt2_over_2 = sqrt(2) / 2
 const compass_rose = ["N", "E", "S", "W"]
 
-const compass_subdivision_count = 5
-
-var compass_text
-var compass_mark_top
-var compass_mark_bottom
-var compass_half_width
-var compass_point_font_size
-
 var pitch_ladder : PitchLadder
+var heading_indicator : HeadingGauge
 var speed_tape
 var speed_tape_labels : Array[Label]
 var health_bar : BarGauge
@@ -30,7 +23,6 @@ class TextScalable extends Node:
 		for i in label_list:
 			var scale = view_rect.size.x / base_label_size.x
 			var scaled_size : int = floor(base_font_size * scale)
-			print(scaled_size)
 			
 			if scaled_size > 4096:
 				continue
@@ -63,7 +55,7 @@ class PitchLadder extends TextScalable:
 		# Initialize pitch marker text
 		label_list = Array()
 		for i in rung_count:
-			var label : Label = Label.new()
+			var label = Label.new()
 			label.text = str(90 - i * 180 / (rung_count - 1))
 			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
@@ -119,11 +111,56 @@ class HeadingGauge extends TextScalable:
 	var sz : Vector2 # Fraction of screen size
 	var subdivision_count
 	
-	func _init(p : Vector2, s : Vector2, subdiv_count : int, base_fnt_sz : int):
+	func _init(p : Vector2, s : Vector2, subdiv_count : int, base_fnt_sz : int, color : Color):
 		pos = p
 		sz = s
 		subdivision_count = subdiv_count
 		base_font_size = base_fnt_sz
+		
+		label_list = Array()
+		for i in 4:
+			var label = RichTextLabel.new()
+			label.text = compass_rose[i]
+			label.theme = Theme.new()
+			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			label.size = Vector2(base_fnt_sz, 1.4 * base_fnt_sz)
+			if i == 0:
+				base_label_size = label.size
+			label.add_theme_font_size_override("normal_font_size", 40)
+			label.add_theme_color_override("default_color", color)
+			label_list.append(label)
+			add_child(label)
+	
+	func construct_heading_markers(fwd_vec : Vector3, view_rect : Rect2):
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var px = pos.x * wx
+		var py = pos.y * wy
+		var sx = sz.x * wx
+		var sy = sz.y * wy
+		
+		var ret_arr = Array()
+		
+		var heading_vec = Vector3(fwd_vec.x, 0, fwd_vec.z).normalized()
+		for i in 4:
+			label_list[i].visible = false
+		for i in 4 * subdivision_count:
+			var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * 3.0 / subdivision_count * pi_over_6)
+			var marker_angle = marker_vec.signed_angle_to(heading_vec, Vector3.DOWN)
+			if abs(marker_angle) > pi_over_4:
+				continue
+			var marker_horiz_offset = Vector2.RIGHT * sx / 2 * marker_angle / pi_over_4
+			
+			if i % subdivision_count == 0:
+				ret_arr.append(null)
+				var current_compass_text = label_list[(i / subdivision_count) % 4]
+				current_compass_text.visible = true
+				current_compass_text.position = Vector2(wx / 2, py) + marker_horiz_offset - Vector2((current_compass_text.size.x - 10) / 2, 0)
+			else:
+				ret_arr.append([Vector2(wx / 2, py) + marker_horiz_offset, Vector2(wx / 2, py + sy) + marker_horiz_offset])
+		
+		return ret_arr
 
 class TapeGauge extends TextScalable:
 	var pos : Vector2 # Fraction of screen size
@@ -310,29 +347,15 @@ func _on_window_resized():
 	var wx = window.size.x
 	var wy = window.size.y
 	pitch_ladder.resize_text(get_viewport_rect())
-	compass_mark_top = wy * 0.02
-	compass_mark_bottom = wy * 0.07
-	compass_half_width = wx * 0.3
-	compass_point_font_size = wy * 0.02
+	heading_indicator.resize_text(get_viewport_rect())
 
 func _ready() -> void:
 	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.125), Vector2(0.4, 0.75), 0.016, 0.004, 0.04, 7, gui_color, get_viewport_rect())
 	self.add_child(pitch_ladder)
 	
-	# Initialize heading indicator text
-	compass_text = Array()
-	for i in 4:
-		var label = RichTextLabel.new()
-		label.text = compass_rose[i]
-		label.theme = Theme.new()
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		label.size = Vector2(40, 56)
-		label.add_theme_font_size_override("normal_font_size", 40)
-		label.add_theme_color_override("color", gui_color)
-		compass_text.append(label)
-		add_child(label)
-		
+	heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.05), 5, 40, gui_color)
+	self.add_child(heading_indicator)
+	
 	# Initialize speed tape
 	speed_tape = TapeGauge.new(Vector2(0.02, 0.25), Vector2(0.05, 0.5), 100, Vector2(5, 0.04), 0.5, 20, get_viewport_rect())
 	speed_tape_labels = []
@@ -419,8 +442,8 @@ func update_health_bar(val : int) -> void:
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
 	var wx = view_rect.size.x
-	var wy = view_rect.size.y
-	var view_center = Vector2(view_rect.size.x / 2, view_rect.size.y / 2)
+	#var wy = view_rect.size.y
+	#var view_center = Vector2(view_rect.size.x / 2, view_rect.size.y / 2)
 	var raw_fwd = -$"../../ZealousJay".transform.basis.z
 	
 	# Draw pitch ladder
@@ -433,23 +456,29 @@ func _draw() -> void:
 		draw_line(i[0][0], i[0][1], gui_color)
 		draw_line(i[1][0], i[1][1], gui_color)
 	
+	var compass_data = heading_indicator.construct_heading_markers(raw_fwd, view_rect)
+	for i in compass_data:
+		if i != null:
+			draw_line(i[0], i[1], gui_color)
+	
 	## Draw heading indicator
-	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
-	for i in 4:
-		compass_text[i].visible = false
-	for i in 4 * compass_subdivision_count:
-		var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * 3.0 / compass_subdivision_count * pi_over_6)
-		var marker_angle = marker_vec.signed_angle_to(heading_vec, Vector3.DOWN)
-		if abs(marker_angle) > pi_over_4:
-			continue
-		var marker_horiz_offset = Vector2.RIGHT * compass_half_width * marker_angle / pi_over_4
-		
-		if i % compass_subdivision_count == 0:
-			var current_compass_text = compass_text[(i / compass_subdivision_count) % 4]
-			current_compass_text.visible = true
-			current_compass_text.position = Vector2(wx / 2, compass_mark_top) + marker_horiz_offset - Vector2((current_compass_text.size.x - 10) / 2, 0)
-		else:
-			draw_line(Vector2(view_rect.size.x / 2, compass_mark_top) + marker_horiz_offset, Vector2(view_rect.size.x / 2, compass_mark_bottom) + marker_horiz_offset, gui_color)
+	#var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
+	#var compass_data = heading_indicator.construct_heading_markers(raw_fwd, view_rect)
+	#for i in 4:
+		#compass_text[i].visible = false
+	#for i in 4 * compass_subdivision_count:
+		#var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * 3.0 / compass_subdivision_count * pi_over_6)
+		#var marker_angle = marker_vec.signed_angle_to(heading_vec, Vector3.DOWN)
+		#if abs(marker_angle) > pi_over_4:
+			#continue
+		#var marker_horiz_offset = Vector2.RIGHT * compass_half_width * marker_angle / pi_over_4
+		#
+		#if i % compass_subdivision_count == 0:
+			#var current_compass_text = compass_text[(i / compass_subdivision_count) % 4]
+			#current_compass_text.visible = true
+			#current_compass_text.position = Vector2(wx / 2, compass_mark_top) + marker_horiz_offset - Vector2((current_compass_text.size.x - 10) / 2, 0)
+		#else:
+			#draw_line(Vector2(view_rect.size.x / 2, compass_mark_top) + marker_horiz_offset, Vector2(view_rect.size.x / 2, compass_mark_bottom) + marker_horiz_offset, gui_color)
 
 	## Draw speed tape
 	#var speed_tape_array = construct_tape_gauge_array(speed_tape, speed_tape_labels, true, $"../../ZealousJay".vel_vec.length() * 3.6)
