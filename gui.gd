@@ -367,7 +367,7 @@ func _ready() -> void:
 		speed_tape_labels.append(label)
 		add_child(label)
 	
-	health_bar = BarGauge.new(Vector2(0.3, 0.95), Vector2(0.4, 0.03), [Color.RED, Color.GREEN], 0)
+	health_bar = BarGauge.new(Vector2(0.02, 0.95), Vector2(0.26, 0.03), [Color.RED, Color.GREEN], 0)
 	health_bar.set_framing(0.002, Color.GREEN, 0, 20)
 	health_bar.set_bar2(1, Color.WHITE)
 	health_bar.set_flash(0.2, 30, 0.7)
