@@ -281,19 +281,37 @@ func _physics_process(_delta: float) -> void:
 	var prev_vel_vec = vel_vec
 	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)
 	var acc_transformed = transform.basis * acc_vec
+	# x direction
 	if abs(vel_vec.x) > actual_max_speed:
-		vel_vec.x -= max_drag_decel * sign(vel_vec.x) * Engine.time_scale
+		var result = vel_vec.x - max_drag_decel * sign(vel_vec.x) * Engine.time_scale
+		if abs(result) < actual_max_speed:
+			vel_vec.x = actual_max_speed * sign(vel_vec.x)
+		else:
+			vel_vec.x = result
 	else:
 		vel_vec.x += acc_transformed.x * Engine.time_scale
+		vel_vec.x = min(abs(vel_vec.x), actual_max_speed) * sign(vel_vec.x)
+	# y direction
 	if abs(vel_vec.y) > actual_max_speed:
-		vel_vec.y -= max_drag_decel * sign(vel_vec.y) * Engine.time_scale
+		var result = vel_vec.y - max_drag_decel * sign(vel_vec.y) * Engine.time_scale
+		if abs(result) < actual_max_speed:
+			vel_vec.y = actual_max_speed * sign(vel_vec.y)
+		else:
+			vel_vec.y = result
 	else:
 		vel_vec.y += acc_transformed.y * Engine.time_scale
+		vel_vec.y = min(abs(vel_vec.y), actual_max_speed) * sign(vel_vec.y)
+	# z direction
 	if abs(vel_vec.z) > actual_max_speed:
-		vel_vec.z -= max_drag_decel * sign(vel_vec.z) * Engine.time_scale
+		var result = vel_vec.z - max_drag_decel * sign(vel_vec.z) * Engine.time_scale
+		if abs(result) < actual_max_speed:
+			vel_vec.z = actual_max_speed * sign(vel_vec.z)
+		else:
+			vel_vec.z = result
 	else:
 		vel_vec.z += acc_transformed.z * Engine.time_scale
-
+		vel_vec.z = min(abs(vel_vec.z), actual_max_speed) * sign(vel_vec.z)
+	
 	# Decrement dash time counter
 	if dash_counter > 0:
 		dash_counter -= Engine.time_scale
