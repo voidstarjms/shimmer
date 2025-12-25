@@ -16,6 +16,7 @@ var speed_tape_labels : Array[Label]
 var health_bar : BarGauge
 
 var gui_color = Color.GREEN
+var warning_color = Color.RED
 
 class TextScalable extends Node:
 	var label_list
@@ -94,7 +95,7 @@ class PitchLadder extends TextScalable:
 			label_list[i].visible = false
 			var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
 			# Cull rung if angle is out of bounds
-			if (abs(rung_angle) > pi_over_4):
+			if (abs(rad_to_deg(rung_angle)) > 35):
 				continue
 			
 			var rung_outer_vec = rung_outer_width * wx * Vector2.RIGHT
@@ -172,15 +173,16 @@ class TapeGauge extends TextScalable:
 	var sz : Vector2 # Fraction of screen size
 	var max_value : int
 	var major_tick_freq : int
-	var minor_tick_gap : float # Fraction of screen size
+	var minor_tick_gap : float # Fraction of tape height
 	var minor_tick_sz : float # Fraction of major tick width
 	var gap_value : int # The value interval between major ticks
 	var nve_allowed : bool
-	var value_label : Label
 	var value_box_pos : float
 	var value_box_height : float
+	var value_span : float
+	var tape_value_offset : float
 	
-	func _init(p : Vector2, s : Vector2, max_val : int, division : Vector2, minor_sz : float, gap_val : int, nve : bool, view_rect : Rect2):
+	func _init(p : Vector2, s : Vector2, max_val : int, division : Vector2, minor_sz : float, gap_val : int, nve : bool, color : Color, view_rect : Rect2):
 		pos = p
 		sz = s
 		max_value = max_val
@@ -189,12 +191,22 @@ class TapeGauge extends TextScalable:
 		minor_tick_sz = minor_sz
 		gap_value = gap_val
 		nve_allowed = nve
+		var minor_tick_count = int(1.0 / minor_tick_gap)
+		var major_tick_count = int(minor_tick_count / major_tick_freq)
+		label_list = Array()
+		for i in major_tick_count + 1:
+			var label : Label = Label.new()
+			label.add_theme_color_override("font_color", color)
+			label_list.append(label)
+			add_child(label)
+		base_label_size = view_rect.size
+		base_font_size = label_list[0].get_theme_font_size("font_size")
 		
 		# Default value box params
 		init_display_gap()
 	
-	func init_display_gap(pos : float = 0.0, height : float = 0.0):
-		value_box_pos = pos
+	func init_display_gap(p : float = 0.0, height : float = 0.0):
+		value_box_pos = p
 		value_box_height = height
 	
 	func get_display_box(view_rect : Rect2) -> Rect2:
@@ -207,6 +219,9 @@ class TapeGauge extends TextScalable:
 		var box_sz = Vector2(sz.x, value_box_height)
 		return Rect2(box_pos, box_sz)
 	
+	func set_tape_offset(offset : float):
+		tape_value_offset = offset
+	
 	func construct(left : bool, metered_value : float, view_rect : Rect2):
 		var wx = view_rect.size.x
 		var wy = view_rect.size.y
@@ -214,24 +229,22 @@ class TapeGauge extends TextScalable:
 		# Derive measurements
 		var tape_width = wx * sz.x
 		var tape_height = wy * sz.y
-		var tick_count = int(tape_height / (tape_height * minor_tick_gap))
-		var tick_gap_absolute = int(minor_tick_gap * tape_height)
+		var tick_count = int(1.0 / minor_tick_gap)
+		var tick_gap_absolute = minor_tick_gap * tape_height
 		var x_absolute = pos.x * wx
 		var y_absolute = pos.y * wy
 		metered_value = clamp(metered_value, -max_value, max_value)
 		
+		for i in label_list:
+			i.visible = false
+		
+		var meter_capacity = (1.0 / minor_tick_gap) * gap_value / major_tick_freq
+		var absolute_offset = meter_capacity * tape_value_offset
+		metered_value -= absolute_offset
+		var base_major_tick_value = ceil(metered_value / gap_value) * gap_value
+		var major_tick_index = 0
 		var mark_arr = Array()
-		var tick_iterator_start
-		var tick_iterator_end
-		if metered_value >= 0:
-			tick_iterator_start = 0
-			tick_iterator_end = tick_count + major_tick_freq
-		else:
-			tick_iterator_start = -major_tick_freq
-			tick_iterator_end = tick_count
-		for i in range(tick_iterator_start, tick_iterator_end):
-			var is_major_tick = i % major_tick_freq == 0
-			
+		for i in range(-major_tick_freq, tick_count + major_tick_freq):
 			# Compute mark offset, cull if out of bounds
 			if nve_allowed == false:
 				metered_value = max(0, metered_value)
@@ -240,8 +253,11 @@ class TapeGauge extends TextScalable:
 			var tick_offset = tick_gap_absolute * i - value_offset
 			if tick_offset < 0 or tick_offset > tape_height:
 				continue
+			var is_major_tick = i % major_tick_freq == 0
 			var tick_offset_relative = tick_offset / tape_height
 			if tick_offset_relative >= value_box_pos and tick_offset_relative <= value_box_pos + value_box_height:
+				if is_major_tick == true:
+					major_tick_index += 1
 				continue
 			
 			var tick_width = tape_width
@@ -251,12 +267,27 @@ class TapeGauge extends TextScalable:
 			# Compute tick mark vertices
 			var tick_start
 			var tick_end
+			var label_position
+			var font_size = label_list[0].get_theme_font_size("font_size")
 			if left == true:
 				tick_start = Vector2(x_absolute, y_absolute + tape_height - tick_offset)
 				tick_end = Vector2(x_absolute + tick_width, y_absolute + tape_height - tick_offset)
+				
+				label_position = tick_end - Vector2(0, font_size)
 			else:
 				tick_start = Vector2(x_absolute + tape_width - tick_width, y_absolute + tape_height - tick_offset)
 				tick_end = Vector2(x_absolute + tape_width, y_absolute + tape_height - tick_offset)
+				label_position = tick_start - Vector2(font_size, font_size)
+			
+			if is_major_tick == true:
+				if label_position.y > (pos.y + (value_box_pos + value_box_height) * sz.y) * wy or label_position.y + font_size < (pos.y + value_box_pos * sz.y) * wy:
+					label_list[major_tick_index].visible = true
+					var label_text = str(int(base_major_tick_value + gap_value * major_tick_index))
+					label_list[major_tick_index].text = label_text
+					if !left:
+						label_position.x -= (label_text.length() - 1) * font_size / 2
+					label_list[major_tick_index].position = label_position
+				major_tick_index += 1
 			
 			mark_arr.append([tick_start, tick_end])
 		
@@ -456,57 +487,61 @@ func _on_window_resized():
 	var view_rect = get_viewport_rect()
 	pitch_ladder.resize_text(view_rect)
 	heading_indicator.resize_text(view_rect)
+	speed_tape.resize_text(view_rect)
+	altimeter_tape.resize_text(view_rect)
 	speed_box.resize_text(view_rect)
 	altimeter_box.resize_text(view_rect)
 
 func _ready() -> void:
 	var view_rect = get_viewport_rect()
 	
-	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.125), Vector2(0.4, 0.75), 0.016, 0.004, 0.04, 7, gui_color, view_rect)
+	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.225), Vector2(0.4, 0.55), 0.016, 0.004, 0.04, 7, gui_color, view_rect)
 	self.add_child(pitch_ladder)
 	
 	heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.05), 5, 40, gui_color)
 	self.add_child(heading_indicator)
 	
 	var speed_tape_x = 0.2675
-	var speed_tape_y = 0.3
+	var speed_tape_y = 0.35
 	var speed_tape_w = 0.0125
-	var speed_tape_h = 0.4
+	var speed_tape_h = 0.3
 	var speed_tape_pos = Vector2(speed_tape_x, speed_tape_y)
 	var speed_tape_sz = Vector2(speed_tape_w, speed_tape_h)
 	var speed_tape_gap_h = 0.1
 	var speed_tape_gap_y = 0.5 - speed_tape_gap_h / 2
-	speed_tape = TapeGauge.new(speed_tape_pos, speed_tape_sz, 99, Vector2(5, 0.04), 0.5, 5, true, view_rect)
+	speed_tape = TapeGauge.new(speed_tape_pos, speed_tape_sz, 99, Vector2(5, 0.04), 0.5, 5, true, gui_color, view_rect)
 	speed_tape.init_display_gap(speed_tape_gap_y, speed_tape_gap_h)
+	speed_tape.set_tape_offset(0.5)
 	self.add_child(speed_tape)
 	
-	var speed_box_x = speed_tape_x - 3 * speed_tape_w
+	var speed_box_x = speed_tape_x - 2 * speed_tape_w
 	var speed_box_y = speed_tape_y + speed_tape_gap_y * speed_tape_h
 	var speed_box_pos = Vector2(speed_box_x, speed_box_y)
-	var speed_box_sz = Vector2(4 * speed_tape_w, speed_tape_gap_h * speed_tape_h)
+	var speed_box_sz = Vector2(3 * speed_tape_w, speed_tape_gap_h * speed_tape_h)
 	speed_box = NumberBox.new(speed_box_pos, speed_box_sz, gui_color, view_rect)
 	self.add_child(speed_box)
 	
 	var altimeter_tape_x = 0.72
-	var altimeter_tape_y = 0.3
+	var altimeter_tape_y = 0.35
 	var altimeter_tape_w = 0.0125
-	var altimeter_tape_h = 0.4
+	var altimeter_tape_h = 0.3
 	var altimeter_tape_pos = Vector2(altimeter_tape_x, altimeter_tape_y)
 	var altimeter_tape_sz = Vector2(altimeter_tape_w, altimeter_tape_h)
 	var altimeter_tape_gap_h = 0.1
 	var altimeter_tape_gap_y = 0.5 - altimeter_tape_gap_h / 2
-	altimeter_tape = TapeGauge.new(altimeter_tape_pos, altimeter_tape_sz, 999, Vector2(5, 0.04), 0.5, 10, false, view_rect)
+	altimeter_tape = TapeGauge.new(altimeter_tape_pos, altimeter_tape_sz, 999, Vector2(5, 0.04), 0.5, 10, false, gui_color, view_rect)
 	altimeter_tape.init_display_gap(altimeter_tape_gap_y, altimeter_tape_gap_h)
+	altimeter_tape.set_tape_offset(0.5)
 	self.add_child(altimeter_tape)
 	
 	var altimeter_box_x = altimeter_tape_x
 	var altimeter_box_y = altimeter_tape_y + altimeter_tape_gap_y * altimeter_tape_h
 	var altimeter_box_pos = Vector2(altimeter_box_x, altimeter_box_y)
-	var altimeter_box_sz = Vector2(4 * altimeter_tape_w, altimeter_tape_gap_h * altimeter_tape_h)
+	var altimeter_box_sz = Vector2(3 * altimeter_tape_w, altimeter_tape_gap_h * altimeter_tape_h)
 	altimeter_box = NumberBox.new(altimeter_box_pos, altimeter_box_sz, gui_color, view_rect)
 	self.add_child(altimeter_box)
 	
-	health_bar = BarGauge.new(Vector2(0.02, 0.95), Vector2(0.26, 0.03), [Color.RED, Color.GREEN], 0)
+	health_bar = BarGauge.new(Vector2(0.02, 0.95), Vector2(0.26, 0.03), [warning_color, gui_color], 0)
 	health_bar.set_framing(0.002, Color.GREEN, 0, 20)
 	health_bar.set_bar2(1, Color.WHITE)
 	health_bar.set_flash(0.2, 30, 0.7)
