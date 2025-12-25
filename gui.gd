@@ -59,16 +59,16 @@ class PitchLadder extends TextScalable:
 		
 		# Initialize pitch marker text
 		label_list = Array()
+		var font = load("res://CONSOLA.TTF")
 		for i in rung_count:
 			var label = Label.new()
 			label.text = str(90 - i * 180 / (rung_count - 1))
+			label.add_theme_font_override("font", font)
 			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
 			self.add_child(label)
-			# Singleton to initialize base label and font size
-			if i == 0:
-				base_label_size = view_rect.size
-				base_font_size = label.get_theme_font_size("font_size", label.get_class())
+		base_label_size = view_rect.size
+		base_font_size = label_list[0].get_theme_font_size("font_size")
 	
 	func construct_ladder_array(view_rect : Rect2, raw_fwd : Vector3):
 		var wx = view_rect.size.x
@@ -123,6 +123,7 @@ class HeadingGauge extends TextScalable:
 		base_font_size = 1
 		
 		label_list = Array()
+		var font = load("res://CONSOLA.TTF")
 		for i in 4:
 			var label = Label.new()
 			label.text = compass_rose[i]
@@ -130,12 +131,12 @@ class HeadingGauge extends TextScalable:
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 			label.size = Vector2(base_fnt_sz, 1.5 * base_fnt_sz)
-			if i == 0:
-				base_label_size = label.size
+			label.add_theme_font_override("font", font)
 			label.add_theme_font_size_override("font_size", base_font_size)
 			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
 			add_child(label)
+		base_label_size = label_list[0].size
 	
 	func construct(fwd_vec : Vector3, view_rect : Rect2):
 		var wx = view_rect.size.x
@@ -194,13 +195,20 @@ class TapeGauge extends TextScalable:
 		var minor_tick_count = int(1.0 / minor_tick_gap)
 		var major_tick_count = int(minor_tick_count / major_tick_freq)
 		label_list = Array()
+		var font = load("res://CONSOLA.TTF")
 		for i in major_tick_count + 1:
 			var label : Label = Label.new()
+			label.add_theme_font_override("font", font)
 			label.add_theme_color_override("font_color", color)
 			label_list.append(label)
 			add_child(label)
 		base_label_size = view_rect.size
 		base_font_size = label_list[0].get_theme_font_size("font_size")
+		## TESTING
+		var font_id : RID = label_list[0].get_theme_font("font").get_rid()
+		var ts = TextServerManager.get_primary_interface()
+		var glyph_ix = ts.font_get_glyph_index(font_id, base_font_size, "0".unicode_at(0), 0)
+		print(ts.font_get_glyph_size(font_id, Vector2i(base_font_size, base_font_size), glyph_ix))
 		
 		# Default value box params
 		init_display_gap()
@@ -306,9 +314,10 @@ class NumberBox extends TextScalable:
 		var pos_absolute = Vector2(wx * pos.x, wy * pos.y)
 		var sz_absolute = Vector2(wx * sz.x, wy * sz.y)
 		var label = Label.new()
+		label.add_theme_font_override("font", load("res://CONSOLA.TTF"))
 		label.add_theme_color_override("font_color", label_color)
 		label.add_theme_font_size_override("font_size", int(sz.y * wy))
-		label.position = pos_absolute - Vector2(0, sz_absolute.y / 4)
+		label.position = pos_absolute
 		label.text = "0"
 		base_label_size = view_rect.size
 		base_font_size = label.get_theme_font_size("font_size")
@@ -320,7 +329,7 @@ class NumberBox extends TextScalable:
 		var wy = view_rect.size.y
 		var pos_absolute = Vector2(wx * pos.x, wy * pos.y)
 		var sz_absolute = Vector2(wx * sz.x, wy * sz.y)
-		label_list[0].position = pos_absolute - Vector2(0, sz_absolute.y / 4)
+		label_list[0].position = pos_absolute
 		return Rect2(Vector2(pos.x * wx, pos.y * wy), Vector2(sz.x * wx, sz.y * wy))
 	
 	func set_value(val : int):
