@@ -44,9 +44,11 @@ class PitchLadder extends TextScalable:
 	var rung_inner_width# = 0.12
 	var rung_length
 	var max_vert# = 0.375
-	var rung_count
+	var rung_spacing
+	var max_visible_rungs
+	var gap_value
 	
-	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, num_rungs : int, color : Color, view_rect : Rect2) -> void:
+	func _init(pos : Vector2, sz : Vector2, lvl_len : float, lvl_margin : float, rung_len : float, rung_spc : float, gap_val : int, view_rect : Rect2) -> void:
 		position = pos
 		size = sz
 		level_mark_len = lvl_len
@@ -55,20 +57,24 @@ class PitchLadder extends TextScalable:
 		rung_outer_width = size.x / 2 - level_mark_len - lvl_margin
 		rung_inner_width = rung_outer_width - rung_len
 		max_vert = size.y / 2
-		rung_count = num_rungs
+		rung_spacing = rung_spc
+		max_visible_rungs = int(1 / rung_spacing)
+		gap_value = gap_val
 		
 		# Initialize pitch marker text
 		label_list = Array()
 		var font = load("res://CONSOLA.TTF")
-		for i in rung_count:
+		for i in max_visible_rungs:
 			var label = Label.new()
-			label.text = str(90 - i * 180 / (rung_count - 1))
 			label.add_theme_font_override("font", font)
-			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
 			self.add_child(label)
 		base_label_size = view_rect.size
 		base_font_size = label_list[0].get_theme_font_size("font_size")
+	
+	func set_label_color(c : Color):
+		for i in label_list:
+			i.set("theme_override_colors/font_color", c)
 	
 	func construct_ladder_array(view_rect : Rect2, raw_fwd : Vector3):
 		var wx = view_rect.size.x
@@ -89,24 +95,36 @@ class PitchLadder extends TextScalable:
 		
 		var center = Vector2(px + sx / 2, py + sy / 2)
 		
+		for i in label_list:
+			i.visible = false
 		# Append rungs
-		var pitch_angle = pi_over_2 - acos(raw_fwd.dot(Vector3.UP))
-		for i in rung_count:
-			label_list[i].visible = false
-			var rung_angle = pitch_angle + (6.0 / (rung_count - 1) * pi_over_6 * i - pi_over_2)
+		var pitch_angle = rad_to_deg(pi_over_2 - acos(raw_fwd.dot(Vector3.UP)))
+		var base_rung_angle
+		if sign(pitch_angle) >= 0: 
+			base_rung_angle = floor((pitch_angle + (gap_value * max_visible_rungs) / 2) / gap_value) * gap_value
+		else:
+			base_rung_angle = ceil((pitch_angle + (gap_value * max_visible_rungs) / 2) / gap_value) * gap_value
+		var rung_vrt_gap_modulo = fmod(pitch_angle, gap_value)
+		var rung_vrt_offset = -1000
+		for rung_ix in max_visible_rungs:
+			rung_vrt_offset = (-(int(max_visible_rungs / 2)) + rung_ix + rung_vrt_gap_modulo / gap_value) * rung_spacing
+			var snapped_rung_angle = int(base_rung_angle - gap_value * rung_ix)
+			var rung_angle = snapped_rung_angle - rung_vrt_gap_modulo
 			# Cull rung if angle is out of bounds
-			if (abs(rad_to_deg(rung_angle)) > 35):
+			if rung_angle > 90 or rung_vrt_offset < -max_vert:
 				continue
+			if rung_angle < -90 or rung_vrt_offset > max_vert:
+				break
+			var rung_vrt_vec = Vector2.UP * rung_vrt_offset * wy
 			
 			var rung_outer_vec = rung_outer_width * wx * Vector2.RIGHT
 			var rung_inner_vec = rung_inner_width * wx * Vector2.RIGHT
+			label_list[rung_ix].visible = true
+			label_list[rung_ix].text = str(snapped_rung_angle)
+			label_list[rung_ix].position = center - rung_outer_vec - rung_vrt_vec
 			
-			var rung_vrt_offset = rung_angle / pi_over_4 * max_vert * wy * Vector2.UP
-			label_list[i].visible = true
-			label_list[i].position = center - rung_outer_vec - rung_vrt_offset
-			
-			var rung_left = [center - rung_outer_vec - rung_vrt_offset, center - rung_inner_vec - rung_vrt_offset]
-			var rung_right = [center + rung_outer_vec - rung_vrt_offset, center + rung_inner_vec - rung_vrt_offset]
+			var rung_left = [center - rung_outer_vec - rung_vrt_vec, center - rung_inner_vec - rung_vrt_vec]
+			var rung_right = [center + rung_outer_vec - rung_vrt_vec, center + rung_inner_vec - rung_vrt_vec]
 			ret_arr.append([rung_left, rung_right])
 		
 		return ret_arr
@@ -208,7 +226,7 @@ class TapeGauge extends TextScalable:
 		var font_id : RID = label_list[0].get_theme_font("font").get_rid()
 		var ts = TextServerManager.get_primary_interface()
 		var glyph_ix = ts.font_get_glyph_index(font_id, base_font_size, "0".unicode_at(0), 0)
-		print(ts.font_get_glyph_size(font_id, Vector2i(base_font_size, base_font_size), glyph_ix))
+		#print(ts.font_get_glyph_size(font_id, Vector2i(base_font_size, base_font_size), glyph_ix))
 		
 		# Default value box params
 		init_display_gap()
@@ -504,7 +522,8 @@ func _on_window_resized():
 func _ready() -> void:
 	var view_rect = get_viewport_rect()
 	
-	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.225), Vector2(0.4, 0.55), 0.016, 0.004, 0.04, 7, gui_color, view_rect)
+	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.225), Vector2(0.4, 0.55), 0.016, 0.004, 0.04, 0.25, 5, view_rect)
+	pitch_ladder.set_label_color(gui_color)
 	self.add_child(pitch_ladder)
 	
 	heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.05), 5, 40, gui_color)
@@ -567,9 +586,6 @@ func update_health_bar(val : int) -> void:
 
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
-	var wx = view_rect.size.x
-	#var wy = view_rect.size.y
-	#var view_center = Vector2(view_rect.size.x / 2, view_rect.size.y / 2)
 	var raw_fwd = -$"../../ZealousJay".transform.basis.z
 	
 	# Draw pitch ladder

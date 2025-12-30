@@ -21,6 +21,7 @@ func respawn():
 	$"..".poise_pos = Vector3.ZERO
 	$"..".health = $"..".max_health
 	$"..".position = start_pos
+	$"..".dash_counter = 0
 	$"..".set_inactionable_timer(30)
 
 func _ready() -> void:

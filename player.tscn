@@ -3,7 +3,24 @@
 [ext_resource type="Script" uid="uid://st5edse85hp" path="res://player.gd" id="1_4flbx"]
 [ext_resource type="PackedScene" uid="uid://ja452n35vask" path="res://shimwing_abstract.tscn" id="1_onrkg"]
 [ext_resource type="ArrayMesh" uid="uid://c2t4idourgfej" path="res://zealous_jay.obj" id="3_i3pqv"]
-[ext_resource type="AudioStream" uid="uid://dwkhtdg6shmi0" path="res://cat_yowl_boost.wav" id="4_hqtel"]
+
+[sub_resource type="Image" id="Image_i3pqv"]
+data = {
+"data": PackedByteArray(255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
+
+[sub_resource type="Image" id="Image_hqtel"]
+data = {
+"data": PackedByteArray(0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255),
+"format": "RGBA8",
+"height": 4,
+"mipmaps": false,
+"width": 4
+}
 
 [sub_resource type="Image" id="Image_sweqy"]
 data = {
@@ -23,26 +40,8 @@ data = {
 "width": 4
 }
 
-[sub_resource type="Image" id="Image_1jxqw"]
-data = {
-"data": PackedByteArray(255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255),
-"format": "RGBA8",
-"height": 4,
-"mipmaps": false,
-"width": 4
-}
-
-[sub_resource type="Image" id="Image_dw050"]
-data = {
-"data": PackedByteArray(0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 255, 0, 255, 255, 0, 0, 0, 255, 255, 0, 255, 255, 0, 0, 0, 255),
-"format": "RGBA8",
-"height": 4,
-"mipmaps": false,
-"width": 4
-}
-
 [sub_resource type="ImageTexture3D" id="ImageTexture3D_2hs0m"]
-_images = Array[Image]([SubResource("Image_sweqy"), SubResource("Image_2hs0m"), SubResource("Image_1jxqw"), SubResource("Image_dw050")])
+_images = Array[Image]([SubResource("Image_i3pqv"), SubResource("Image_hqtel"), SubResource("Image_sweqy"), SubResource("Image_2hs0m")])
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1jxqw"]
 albedo_color = Color(0, 0, 1, 1)
@@ -66,6 +65,5 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003540039, -0.02154541, -0.
 shape = SubResource("BoxShape3D_1jxqw")
 
 [node name="sfx_dash" parent="." index="6" unique_id=1046824658]
-stream = ExtResource("4_hqtel")
 volume_db = -20.789
 bus = &"Player Dash"

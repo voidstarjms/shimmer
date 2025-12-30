@@ -55,8 +55,8 @@ const deflector_max_lvl = 19
 # Equipment stat upgrade base values
 const max_spd_base = 24
 const main_thrust_base = 0.2
-const vrt_thrust_base = 0.06
-const lat_thrust_base = 0.06
+const vrt_thrust_base = 0.12
+const lat_thrust_base = 0.12
 const thrust_pitch_base = 0.06
 const thrust_roll_base = 0.06
 const thrust_yaw_base = 0.06
@@ -66,7 +66,7 @@ const max_health_base = 100
 # Equipment stat upgrade steps
 const max_spd_step = 1
 const main_thrust_step = 0.005
-const strafe_thrust_step = 0.002
+const strafe_thrust_step = 0.004
 const rotation_thrust_step = 0.001
 const poise_spring_const_step = 0.0059
 const poise_damping_step = 0.0025
