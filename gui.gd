@@ -5,6 +5,7 @@ const pi_over_4 = PI / 4
 const pi_over_2 = PI / 2
 const sqrt2_over_2 = sqrt(2) / 2
 const compass_rose = ["N", "E", "S", "W"]
+const UI_font_path = "res://CONSOLA.TTF"
 
 var pitch_ladder : PitchLadder
 var heading_indicator : HeadingGauge
@@ -63,7 +64,7 @@ class PitchLadder extends TextScalable:
 		
 		# Initialize pitch marker text
 		label_list = Array()
-		var font = load("res://CONSOLA.TTF")
+		var font = load(UI_font_path)
 		for i in max_visible_rungs:
 			var label = Label.new()
 			label.add_theme_font_override("font", font)
@@ -132,29 +133,58 @@ class PitchLadder extends TextScalable:
 class HeadingGauge extends TextScalable:
 	var pos : Vector2 # Fraction of screen size
 	var sz : Vector2 # Fraction of screen size
+	var marker_distance # Fraction of object size
 	var subdivision_count
+	var marker_frequency
+	var angle_marker_increment
+	var label_distance
+	var visible_labels
+	var invisible_labels
+	var angle_divisor
+	var prev_angle = 0
 	
-	func _init(p : Vector2, s : Vector2, subdiv_count : int, base_fnt_sz : int, color : Color):
+	func _init(p : Vector2, s : Vector2, mark_dist : float, subdiv_count : int, marker_freq : int, color : Color, view_rect : Rect2):
 		pos = p
 		sz = s
+		marker_distance = mark_dist
 		subdivision_count = subdiv_count
+		marker_frequency = marker_freq
+		angle_marker_increment = int(90.0 / subdivision_count * marker_freq)
 		base_font_size = 1
+		label_distance = marker_distance * marker_frequency
+		angle_divisor = marker_frequency * (sz.x) / marker_distance
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var px = wx * p.x
+		var py = wy * p.y
+		var sx = wx * s.x
+		var sy = wy * s.y
+		var center = px + sx / 2
 		
 		label_list = Array()
-		var font = load("res://CONSOLA.TTF")
-		for i in 4:
+		visible_labels = Array()
+		invisible_labels = Array()
+		var font = load(UI_font_path)
+		var leftmost_label_x = center - (floor(sz.x / label_distance) - 1) * label_distance * sx
+		var leftmost_label_val = -(floor(sz.x / label_distance) - 1) * angle_marker_increment
+		for i in int(ceil(1 / label_distance) + 1):
 			var label = Label.new()
-			label.text = compass_rose[i]
+			label.position = Vector2(leftmost_label_x + i * label_distance * sx, py + sy)
+			if label.position.x > px + sx:
+				label.visible = false
+				invisible_labels.append(label)
+			else:
+				visible_labels.append(label)
+			label.text = str(int(fposmod(leftmost_label_val + i * angle_marker_increment, 360)))
 			label.theme = Theme.new()
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-			label.size = Vector2(base_fnt_sz, 1.5 * base_fnt_sz)
 			label.add_theme_font_override("font", font)
-			label.add_theme_font_size_override("font_size", base_font_size)
 			label.set("theme_override_colors/font_color", color)
 			label_list.append(label)
 			add_child(label)
-		base_label_size = label_list[0].size
+		base_label_size = view_rect.size
+		base_font_size = label_list[0].get_theme_font_size("font_size")
 	
 	func construct(fwd_vec : Vector3, view_rect : Rect2):
 		var wx = view_rect.size.x
@@ -163,27 +193,58 @@ class HeadingGauge extends TextScalable:
 		var py = pos.y * wy
 		var sx = sz.x * wx
 		var sy = sz.y * wy
-		
 		var ret_arr = Array()
-		
 		var heading_vec = Vector3(fwd_vec.x, 0, fwd_vec.z).normalized()
-		for i in 4:
-			label_list[i].visible = false
-		for i in 4 * subdivision_count:
-			var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * 3.0 / subdivision_count * pi_over_6)
-			var marker_angle = marker_vec.signed_angle_to(heading_vec, Vector3.DOWN)
-			if abs(marker_angle) > pi_over_4:
+		var heading_angle = Vector3.BACK.signed_angle_to(heading_vec, Vector3.DOWN)
+		if heading_angle < 0:
+			heading_angle += TAU
+		if heading_angle > TAU:
+			heading_angle -= TAU
+		var clamped_heading_angle = fmod(heading_angle / angle_divisor, pi_over_2 / angle_divisor)
+		print(rad_to_deg(heading_angle))
+		var clamped_heading_vec = Vector3.BACK.rotated(Vector3.DOWN, clamped_heading_angle)
+		var center = px + sx / 2
+		
+		#for i in label_list:
+			#i.visible = false
+		for i in 2 * subdivision_count:
+			var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * pi_over_4 / subdivision_count - pi_over_4)
+			var marker_angle = marker_vec.signed_angle_to(clamped_heading_vec, Vector3.DOWN)
+			var marker_horiz_offset = Vector2.RIGHT * sx / 2 * marker_distance * marker_angle * 90.0 / subdivision_count
+			if marker_horiz_offset.x > sx / 2:
+				break
+			if marker_horiz_offset.x < -sx / 2:
 				continue
-			var marker_horiz_offset = Vector2.RIGHT * sx / 2 * marker_angle / pi_over_4
 			
-			if i % subdivision_count == 0:
-				ret_arr.append(null)
-				var current_compass_text : Label = label_list[(i / subdivision_count) % 4]
-				current_compass_text.visible = true
-				var fnt_size = current_compass_text.get_theme_font_size("font_size")
-				current_compass_text.position = Vector2(wx / 2, py) + marker_horiz_offset - Vector2(fnt_size / 2, 0)
+			ret_arr.append([Vector2(wx / 2, py) + marker_horiz_offset, Vector2(wx / 2, py + sy) + marker_horiz_offset])
+		
+		var label_pos_change = (heading_angle - fmod(prev_angle, TAU)) * label_distance * sx / 2 * (1 / (marker_frequency * label_distance))
+		
+		var visible_label_ix = 0
+		while visible_label_ix < len(visible_labels):
+			var label = visible_labels[visible_label_ix]
+			label.position.x += label_pos_change
+			if label.position.x < px or label.position.x > px + sx:
+				invisible_labels.append(visible_labels.pop_at(visible_label_ix))
+				label.visible = false
 			else:
-				ret_arr.append([Vector2(wx / 2, py) + marker_horiz_offset, Vector2(wx / 2, py + sy) + marker_horiz_offset])
+				visible_label_ix += 1
+		
+		if visible_labels[0].position.x - label_distance * sx > px:
+			var new_label = invisible_labels.pop_back()
+			new_label.visible = true
+			new_label.text = str(int(fposmod(float(visible_labels[0].text) - angle_marker_increment, 360)))
+			new_label.position = Vector2(visible_labels[0].position.x - label_distance * sx, py + sy)
+			visible_labels.push_front(new_label)
+		var rightmost_label = visible_labels[len(visible_labels) - 1]
+		if rightmost_label.position.x + label_distance * sx < px + sx:
+			var new_label = invisible_labels.pop_back()
+			new_label.visible = true
+			new_label.text = str(int(fposmod(float(rightmost_label.text) + angle_marker_increment, 360)))
+			new_label.position = Vector2(rightmost_label.position.x + label_distance * sx, py + sy)
+			visible_labels.push_back(new_label)
+			
+		prev_angle = heading_angle
 		
 		return ret_arr
 
@@ -213,7 +274,7 @@ class TapeGauge extends TextScalable:
 		var minor_tick_count = int(1.0 / minor_tick_gap)
 		var major_tick_count = int(minor_tick_count / major_tick_freq)
 		label_list = Array()
-		var font = load("res://CONSOLA.TTF")
+		var font = load(UI_font_path)
 		for i in major_tick_count + 1:
 			var label : Label = Label.new()
 			label.add_theme_font_override("font", font)
@@ -222,10 +283,10 @@ class TapeGauge extends TextScalable:
 			add_child(label)
 		base_label_size = view_rect.size
 		base_font_size = label_list[0].get_theme_font_size("font_size")
-		## TESTING
-		var font_id : RID = label_list[0].get_theme_font("font").get_rid()
-		var ts = TextServerManager.get_primary_interface()
-		var glyph_ix = ts.font_get_glyph_index(font_id, base_font_size, "0".unicode_at(0), 0)
+		## TESTING get exact glyph sizes
+		#var font_id : RID = label_list[0].get_theme_font("font").get_rid()
+		#var ts = TextServerManager.get_primary_interface()
+		#var glyph_ix = ts.font_get_glyph_index(font_id, base_font_size, "0".unicode_at(0), 0)
 		#print(ts.font_get_glyph_size(font_id, Vector2i(base_font_size, base_font_size), glyph_ix))
 		
 		# Default value box params
@@ -268,6 +329,8 @@ class TapeGauge extends TextScalable:
 		var absolute_offset = meter_capacity * tape_value_offset
 		metered_value -= absolute_offset
 		var base_major_tick_value = ceil(metered_value / gap_value) * gap_value
+		if nve_allowed == false:
+			base_major_tick_value = max(base_major_tick_value, 0)
 		var major_tick_index = 0
 		var mark_arr = Array()
 		for i in range(-major_tick_freq, tick_count + major_tick_freq):
@@ -330,9 +393,8 @@ class NumberBox extends TextScalable:
 		var wx = view_rect.size.x
 		var wy = view_rect.size.y
 		var pos_absolute = Vector2(wx * pos.x, wy * pos.y)
-		var sz_absolute = Vector2(wx * sz.x, wy * sz.y)
 		var label = Label.new()
-		label.add_theme_font_override("font", load("res://CONSOLA.TTF"))
+		label.add_theme_font_override("font", load(UI_font_path))
 		label.add_theme_color_override("font_color", label_color)
 		label.add_theme_font_size_override("font_size", int(sz.y * wy))
 		label.position = pos_absolute
@@ -346,7 +408,6 @@ class NumberBox extends TextScalable:
 		var wx = view_rect.size.x
 		var wy = view_rect.size.y
 		var pos_absolute = Vector2(wx * pos.x, wy * pos.y)
-		var sz_absolute = Vector2(wx * sz.x, wy * sz.y)
 		label_list[0].position = pos_absolute
 		return Rect2(Vector2(pos.x * wx, pos.y * wy), Vector2(sz.x * wx, sz.y * wy))
 	
@@ -510,10 +571,46 @@ class BarGauge:
 		for i in flash_observer_list:
 			i.update()
 
+class SlidingArrowGauge extends TextScalable:
+	var pos
+	var sz
+	var orientation
+	var value
+	var max_value
+	var tick_spacing
+	
+	func _init(p : Vector2, s : Vector2, orient : int, max_val : int, tick_spc : float, label_color : Color, view_rect : Rect2):
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		
+		pos = p
+		sz = s
+		orientation = orient
+		max_value = max_val
+		tick_spacing = tick_spc
+		var font = load(UI_font_path)
+		# Create lower valued label
+		var label = Label.new()
+		label.add_theme_font_override("font", font)
+		label.add_theme_color_override("font_color", label_color)
+		label.add_theme_font_size_override("font_size", int(sz.y * wy))
+		label.text = str(-max_value)
+		# Create upper valued label
+		label = Label.new()
+		label.add_theme_font_override("font", font)
+		label.add_theme_color_override("font_color", label_color)
+		label.add_theme_font_size_override("font_size", int(sz.y * wy))
+		label.text = str(max_value)
+		
+		label_list.add(Label.new())
+	
+	func set_max_value(new_value: int):
+		max_value = new_value
+
 func _on_window_resized():
 	var view_rect = get_viewport_rect()
 	pitch_ladder.resize_text(view_rect)
-	heading_indicator.resize_text(view_rect)
+	#heading_indicator.resize_text(view_rect)
 	speed_tape.resize_text(view_rect)
 	altimeter_tape.resize_text(view_rect)
 	speed_box.resize_text(view_rect)
@@ -526,8 +623,8 @@ func _ready() -> void:
 	pitch_ladder.set_label_color(gui_color)
 	self.add_child(pitch_ladder)
 	
-	heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.05), 5, 40, gui_color)
-	self.add_child(heading_indicator)
+	#heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.03), 0.2, 6, 1, gui_color, view_rect)
+	#self.add_child(heading_indicator)
 	
 	var speed_tape_x = 0.2675
 	var speed_tape_y = 0.35
@@ -578,7 +675,7 @@ func _ready() -> void:
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
 
-func _process(delta: float) -> void:
+func _physics_process(delta: float) -> void:
 	queue_redraw()
 
 func update_health_bar(val : int) -> void:
@@ -598,10 +695,10 @@ func _draw() -> void:
 		draw_line(i[0][0], i[0][1], gui_color)
 		draw_line(i[1][0], i[1][1], gui_color)
 	
-	var compass_data = heading_indicator.construct(raw_fwd, view_rect)
-	for i in compass_data:
-		if i != null:
-			draw_line(i[0], i[1], gui_color)
+	#var compass_data = heading_indicator.construct(raw_fwd, view_rect)
+	#for i in compass_data:
+		#if i != null:
+			#draw_line(i[0], i[1], gui_color)
 
 	# Draw speed tape
 	var unsigned_fwd_vel = $"../../ZealousJay".vel_vec.project(raw_fwd).length()
