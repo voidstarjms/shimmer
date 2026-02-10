@@ -8,13 +8,14 @@ const compass_rose = ["N", "E", "S", "W"]
 const UI_font_path = "res://CONSOLA.TTF"
 
 var pitch_ladder : PitchLadder
-var heading_indicator : HeadingGauge
+#var heading_indicator : HeadingGauge
 var speed_tape : TapeGauge
 var speed_box : NumberBox
 var altimeter_tape : TapeGauge
 var altimeter_box : NumberBox
 var speed_tape_labels : Array[Label]
 var health_bar : BarGauge
+var heading_number : NumberBox
 
 var gui_color = Color.GREEN
 var warning_color = Color.RED
@@ -672,6 +673,9 @@ func _ready() -> void:
 	health_bar.set_flash(0.2, 30, 0.7)
 	health_bar.add_observer($"./GUI_health_beep")
 	
+	heading_number = NumberBox.new(Vector2(0.5 - altimeter_box_sz.x / 2, 0.01), altimeter_box_sz, gui_color, view_rect)
+	self.add_child(heading_number)
+	
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
 
@@ -694,11 +698,6 @@ func _draw() -> void:
 	for i in pitch_ladder_data:
 		draw_line(i[0][0], i[0][1], gui_color)
 		draw_line(i[1][0], i[1][1], gui_color)
-	
-	#var compass_data = heading_indicator.construct(raw_fwd, view_rect)
-	#for i in compass_data:
-		#if i != null:
-			#draw_line(i[0], i[1], gui_color)
 
 	# Draw speed tape
 	var unsigned_fwd_vel = $"../../ZealousJay".vel_vec.project(raw_fwd).length()
@@ -732,3 +731,10 @@ func _draw() -> void:
 	for i in health_bar_segments:
 		draw_line(i[0], i[1], Color.GREEN)
 	health_bar.step()
+	
+	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
+	var heading_angle = -Vector3.BACK.signed_angle_to(heading_vec, Vector3.DOWN)
+	if heading_angle < 0:
+		heading_angle += TAU
+	heading_number.set_value(int(rad_to_deg(heading_angle)))
+	draw_rect(heading_number.construct(view_rect), gui_color, false)
