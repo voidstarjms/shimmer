@@ -17,7 +17,7 @@ var start_pos
 var screenshake_direction = Vector2.ZERO
 var screenshake_magnitude = 0
 var screenshake_jitter = 0
-const poise_screenshake_mag = 0.03
+const poise_screenshake_mag = 0.05
 const screenshake_mag_decay = 0.002
 const screenshake_jit_decay = 0.001
 
@@ -149,9 +149,6 @@ func _process(delta: float) -> void:
 		screenshake_offset = lerp(prev_screenshake_offset, screenshake_offset, 0.2)
 		prev_screenshake_offset = screenshake_offset
 		cam.transform.origin += cam.transform.basis.x * screenshake_offset.x + cam.transform.basis.y * screenshake_offset.y
-		var poise_pos = $"..".poise_pos
-		var screenshake_dir = Vector2(poise_pos.project(cam.transform.basis.x).length(), poise_pos.project(cam.transform.basis.y).length()).normalized()
-		var screenshake_mag = poise_screenshake_mag * poise_pos.length() / root3
 		
 		# Define camera basis
 		#if abs(transform.basis.z.dot(Vector3.UP)) < 0.86:
@@ -159,6 +156,11 @@ func _process(delta: float) -> void:
 		cam.transform.basis.x = cam.transform.basis.z.cross(Vector3.UP)
 		cam.transform.basis.y = cam.transform.basis.x.cross(cam.transform.basis.z)
 		
+		var poise_pos = $"..".poise_pos
+		var screenshake_dir = Vector2(poise_pos.project(cam.transform.basis.x).length(), poise_pos.project(cam.transform.basis.y).length()).normalized()
+		var screenshake_mag = poise_screenshake_mag * poise_pos.length() / root3
+		if screenshake_mag < 0.1 * poise_screenshake_mag:
+			screenshake_mag = 0
 		screenshake_set_direction(screenshake_dir)
 		screenshake_set_magnitude(screenshake_mag)
 		screenshake_step()
