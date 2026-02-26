@@ -240,6 +240,7 @@ func take_damage(amount : int):
 	health -= amount
 	if health <= 0:
 		$"./sfx_dead".playing = true
+		# TODO move this logic to the player's take_damage implementation
 		var player = get_node("./player")
 		if player != null:
 			player.respawn()
@@ -351,23 +352,23 @@ func _physics_process(_delta: float) -> void:
 		poise_pos.z = sign(poise_pos.z)
 		poise_vel.z = 0
 
-	# Move actor and collide
-	var collision = move_and_collide(vel_vec * _delta)
-	if collision:
-		var collision_normal = collision.get_normal()
-		var vel_dot_normal = vel_vec.normalized().dot(collision_normal)
-		if vel_dot_normal < 0:
-			# Inflict crash damage based on angle of impact
-			var crash_damage = floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length())
-			if crash_damage > 0:
-				$"./sfx_dmg_crash".playing = true
-				take_damage(crash_damage)
-			vel_vec = vel_vec.slide(collision_normal)
-			if vel_vec != Vector3.ZERO:
-				transform.basis = Basis.looking_at(lerp(-transform.basis.z,
-					-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
-				# Why is this necessary?
-				transform.basis.x *= -1
+	## Move actor and collide
+	#var collision = move_and_collide(vel_vec * _delta)
+	#if collision:
+		#var collision_normal = collision.get_normal()
+		#var vel_dot_normal = vel_vec.normalized().dot(collision_normal)
+		#if vel_dot_normal < 0:
+			## Inflict crash damage based on angle of impact
+			#var crash_damage = floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length())
+			#if crash_damage > 0:
+				#$"./sfx_dmg_crash".playing = true
+				#take_damage(crash_damage)
+			#vel_vec = vel_vec.slide(collision_normal)
+			#if vel_vec != Vector3.ZERO:
+				#transform.basis = Basis.looking_at(lerp(-transform.basis.z,
+					#-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
+				## Why is this necessary?
+				#transform.basis.x *= -1
 
 	# Clear demand values
 	lon_demand = 0
