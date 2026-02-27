@@ -16,6 +16,7 @@ var altimeter_box : NumberBox
 var speed_tape_labels : Array[Label]
 var health_bar : BarGauge
 var heading_number : NumberBox
+var lat_vel_gauge : SlidingArrowGauge
 
 var gui_color = Color.GREEN
 var warning_color = Color.RED
@@ -578,35 +579,86 @@ class SlidingArrowGauge extends TextScalable:
 	var orientation
 	var value
 	var max_value
-	var tick_spacing
+	var subdiv_count
+	var arrow_d
 	
-	func _init(p : Vector2, s : Vector2, orient : int, max_val : int, tick_spc : float, label_color : Color, view_rect : Rect2):
+	func _init(p : Vector2, s : Vector2, orient : int, max_val : int, subdiv : float, arrow_dim : Vector2, label_color : Color, view_rect : Rect2):
 		var wx = view_rect.size.x
 		var wy = view_rect.size.y
-		
 		pos = p
 		sz = s
+		var px = wx * p.x
+		var py = wy * p.y
+		var sx = wx * s.x
+		var sy = wy * s.y
+		
 		orientation = orient
 		max_value = max_val
-		tick_spacing = tick_spc
+		subdiv_count = subdiv
+		arrow_d = arrow_dim
 		var font = load(UI_font_path)
-		# Create lower valued label
-		var label = Label.new()
-		label.add_theme_font_override("font", font)
-		label.add_theme_color_override("font_color", label_color)
-		label.add_theme_font_size_override("font_size", int(sz.y * wy))
-		label.text = str(-max_value)
-		# Create upper valued label
-		label = Label.new()
-		label.add_theme_font_override("font", font)
-		label.add_theme_color_override("font_color", label_color)
-		label.add_theme_font_size_override("font_size", int(sz.y * wy))
-		label.text = str(max_value)
+		label_list = Array()
 		
-		label_list.add(Label.new())
+		# Create lower valued label
+		var label = RichTextLabel.new()
+		label.add_theme_font_override("normal_font", font)
+		label.add_theme_color_override("default_color", label_color)
+		label.add_theme_font_size_override("normal_font_size", int(sy))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.text = str(-max_value)
+		label.position = Vector2(px - label.size.x/2, py + sy)
+		label.size = Vector2(40,40)
+		label_list.append(label)
+		add_child(label)
+		# Create upper valued label
+		label = RichTextLabel.new()
+		label.add_theme_font_override("normal_font", font)
+		label.add_theme_color_override("default_color", label_color)
+		label.add_theme_font_size_override("normal_font_size", int(sy))
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.text = str(max_value)
+		label.position = Vector2(px + sx - label.size.x/2, py + sy)
+		label.size = Vector2(40,40)
+		label_list.append(label)
+		add_child(label)
+		
+		base_label_size = view_rect.size
+		base_font_size = label.get_theme_font_size("normal_font_size")
 	
 	func set_max_value(new_value: int):
 		max_value = new_value
+	
+	func construct(view_rect : Rect2):
+		var wx = view_rect.size.x
+		var wy = view_rect.size.y
+		var px = wx * pos.x
+		var py = wy * pos.y
+		var sx = wx * sz.x
+		var sy = wy * sz.y
+		
+		var ret_arr = Array()
+		var ticks = subdiv_count + 2
+		if orientation == 0:
+			label_list[0].position = Vector2(px - label_list[0].size.x/2, py + sy)
+			label_list[1].position = Vector2(px - label_list[1].size.x/2 + sx, py + sy)
+			
+			var arrow_offset = sx * (0.5 + value / max_value * 0.5)
+			ret_arr.append([[Vector2(px - sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y), Vector2(px + arrow_offset, py)],
+				[Vector2(px + arrow_offset, py), Vector2(px + sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y)]])
+			for i in ticks + 1:
+				var div_frac = i / ticks
+				# TODO get rid of these magic numbers and make it more flexible
+				var height
+				if div_frac == 0 or div_frac == 0.5 or div_frac == 1:
+					height = sy
+				else:
+					height = sy * 0.5
+				ret_arr.append([Vector2(px + div_frac * sx, py + sy), Vector2(px + div_frac * sx, py + sy - height)])
+		
+		return ret_arr
+	
+	func set_value(val : float):
+		value = clamp(val, -max_value, max_value)
 
 func _on_window_resized():
 	var view_rect = get_viewport_rect()
@@ -616,6 +668,7 @@ func _on_window_resized():
 	altimeter_tape.resize_text(view_rect)
 	speed_box.resize_text(view_rect)
 	altimeter_box.resize_text(view_rect)
+	lat_vel_gauge.resize_text(view_rect)
 
 func _ready() -> void:
 	var view_rect = get_viewport_rect()
@@ -675,6 +728,9 @@ func _ready() -> void:
 	
 	heading_number = NumberBox.new(Vector2(0.5 - altimeter_box_sz.x / 2, 0.01), altimeter_box_sz, gui_color, view_rect)
 	self.add_child(heading_number)
+	
+	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
+	self.add_child(lat_vel_gauge)
 	
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
@@ -738,3 +794,12 @@ func _draw() -> void:
 		heading_angle += TAU
 	heading_number.set_value(int(rad_to_deg(heading_angle)))
 	draw_rect(heading_number.construct(view_rect), gui_color, false)
+	
+	var right_vec = $"../../ZealousJay".transform.basis.x
+	var lat_vel = $"../../ZealousJay".vel_vec.project(right_vec)
+	lat_vel_gauge.set_value(lat_vel.length() * sign(lat_vel.dot(right_vec)))
+	var lat_vel_tick_array = lat_vel_gauge.construct(view_rect)
+	draw_line(lat_vel_tick_array[0][0][0], lat_vel_tick_array[0][0][1], gui_color)
+	draw_line(lat_vel_tick_array[0][1][0], lat_vel_tick_array[0][1][1], gui_color)
+	for i in range(1, lat_vel_tick_array.size()):
+		draw_line(lat_vel_tick_array[i][0], lat_vel_tick_array[i][1], gui_color)
