@@ -319,7 +319,7 @@ func _physics_process(_delta: float) -> void:
 	
 	# Apply deceleration
 	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0 and dash_counter == 0:
-		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized()  * Engine.time_scale
+		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized() * Engine.time_scale
 		if sign(prev_vel_vec.x) != sign(vel_vec.x):
 			vel_vec.x = 0
 		if sign(prev_vel_vec.y) != sign(vel_vec.y):

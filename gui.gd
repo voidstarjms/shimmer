@@ -17,6 +17,7 @@ var speed_tape_labels : Array[Label]
 var health_bar : BarGauge
 var heading_number : NumberBox
 var lat_vel_gauge : SlidingArrowGauge
+var vrt_vel_gauge : SlidingArrowGauge
 
 var gui_color = Color.GREEN
 var warning_color = Color.RED
@@ -203,7 +204,6 @@ class HeadingGauge extends TextScalable:
 		if heading_angle > TAU:
 			heading_angle -= TAU
 		var clamped_heading_angle = fmod(heading_angle / angle_divisor, pi_over_2 / angle_divisor)
-		print(rad_to_deg(heading_angle))
 		var clamped_heading_vec = Vector3.BACK.rotated(Vector3.DOWN, clamped_heading_angle)
 		var center = px + sx / 2
 		
@@ -577,7 +577,7 @@ class SlidingArrowGauge extends TextScalable:
 	var pos
 	var sz
 	var orientation
-	var value
+	var value = 0
 	var max_value
 	var subdiv_count
 	var arrow_d
@@ -605,8 +605,8 @@ class SlidingArrowGauge extends TextScalable:
 		label.add_theme_color_override("default_color", label_color)
 		label.add_theme_font_size_override("normal_font_size", int(sy))
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.text = str(-max_value)
-		label.position = Vector2(px - label.size.x/2, py + sy)
 		label.size = Vector2(40,40)
 		label_list.append(label)
 		add_child(label)
@@ -614,10 +614,10 @@ class SlidingArrowGauge extends TextScalable:
 		label = RichTextLabel.new()
 		label.add_theme_font_override("normal_font", font)
 		label.add_theme_color_override("default_color", label_color)
-		label.add_theme_font_size_override("normal_font_size", int(sy))
+		label.add_theme_font_size_override("normal_font_size", 12 * sz.y if orientation % 2 == 0 else 12 * sz.x)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		label.text = str(max_value)
-		label.position = Vector2(px + sx - label.size.x/2, py + sy)
 		label.size = Vector2(40,40)
 		label_list.append(label)
 		add_child(label)
@@ -638,22 +638,44 @@ class SlidingArrowGauge extends TextScalable:
 		
 		var ret_arr = Array()
 		var ticks = subdiv_count + 2
-		if orientation == 0:
-			label_list[0].position = Vector2(px - label_list[0].size.x/2, py + sy)
-			label_list[1].position = Vector2(px - label_list[1].size.x/2 + sx, py + sy)
-			
-			var arrow_offset = sx * (0.5 + value / max_value * 0.5)
-			ret_arr.append([[Vector2(px - sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y), Vector2(px + arrow_offset, py)],
-				[Vector2(px + arrow_offset, py), Vector2(px + sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y)]])
-			for i in ticks + 1:
-				var div_frac = i / ticks
-				# TODO get rid of these magic numbers and make it more flexible
-				var height
-				if div_frac == 0 or div_frac == 0.5 or div_frac == 1:
-					height = sy
-				else:
-					height = sy * 0.5
-				ret_arr.append([Vector2(px + div_frac * sx, py + sy), Vector2(px + div_frac * sx, py + sy - height)])
+		match orientation:
+			0:
+				label_list[0].position = Vector2(px - label_list[0].size.x/2, py + sy)
+				label_list[1].position = Vector2(px - label_list[1].size.x/2 + sx, py + sy)
+				# TODO this value ordering direction should be more flexible and this code is also repeated
+				label_list[0].text = str(-max_value)
+				label_list[1].text = str(max_value)
+				
+				var arrow_offset = sx * (0.5 + value / max_value * 0.5)
+				ret_arr.append([[Vector2(px - sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y), Vector2(px + arrow_offset, py)],
+					[Vector2(px + arrow_offset, py), Vector2(px + sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y)]])
+				for i in ticks + 1:
+					var div_frac = i / ticks
+					# TODO get rid of these magic numbers and make it more flexible
+					var tick_len
+					if div_frac == 0 or div_frac == 0.5 or div_frac == 1:
+						tick_len = sy
+					else:
+						tick_len = sy * 0.5
+					ret_arr.append([Vector2(px + div_frac * sx, py + sy), Vector2(px + div_frac * sx, py + sy - tick_len)])
+			1:
+				label_list[0].position = Vector2(px - label_list[0].size.x, py + sy - label_list[0].size.y/2)
+				label_list[1].position = Vector2(px - label_list[0].size.x, py - label_list[0].size.y/2)
+				label_list[0].text = str(max_value)
+				label_list[1].text = str(-max_value)
+				
+				var arrow_offset = sy * (0.5 + value / max_value * 0.5)
+				ret_arr.append([[Vector2(px + sx + sx * arrow_d.y, py + sy - sy * arrow_d.x - arrow_offset), Vector2(px + sx, py + sy - arrow_offset)],
+					[Vector2(px + sx, py + sy - arrow_offset), Vector2(px + sx + sx * arrow_d.y, py + sy + sy * arrow_d.x - arrow_offset)]])
+				for i in ticks + 1:
+					var div_frac = i / ticks
+					# TODO get rid of these magic numbers and make it more flexible
+					var tick_len
+					if div_frac == 0 or div_frac == 0.5 or div_frac == 1:
+						tick_len = sx
+					else:
+						tick_len = sx * 0.5
+					ret_arr.append([Vector2(px + sx, py + sy * div_frac), Vector2(px + sx - tick_len, py + sy * div_frac)])
 		
 		return ret_arr
 	
@@ -669,6 +691,7 @@ func _on_window_resized():
 	speed_box.resize_text(view_rect)
 	altimeter_box.resize_text(view_rect)
 	lat_vel_gauge.resize_text(view_rect)
+	vrt_vel_gauge.resize_text(view_rect)
 
 func _ready() -> void:
 	var view_rect = get_viewport_rect()
@@ -731,6 +754,9 @@ func _ready() -> void:
 	
 	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(lat_vel_gauge)
+	
+	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
+	self.add_child(vrt_vel_gauge)
 	
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
@@ -803,3 +829,12 @@ func _draw() -> void:
 	draw_line(lat_vel_tick_array[0][1][0], lat_vel_tick_array[0][1][1], gui_color)
 	for i in range(1, lat_vel_tick_array.size()):
 		draw_line(lat_vel_tick_array[i][0], lat_vel_tick_array[i][1], gui_color)
+	
+	var up_vec = $"../../ZealousJay".transform.basis.y
+	var vrt_vel = $"../../ZealousJay".vel_vec.project(up_vec)
+	vrt_vel_gauge.set_value(vrt_vel.length() * sign(vrt_vel.dot(up_vec)))
+	var vrt_vel_tick_array = vrt_vel_gauge.construct(view_rect)
+	draw_line(vrt_vel_tick_array[0][0][0], vrt_vel_tick_array[0][0][1], gui_color)
+	draw_line(vrt_vel_tick_array[0][1][0], vrt_vel_tick_array[0][1][1], gui_color)
+	for i in range(1, vrt_vel_tick_array.size()):
+		draw_line(vrt_vel_tick_array[i][0], vrt_vel_tick_array[i][1], gui_color)

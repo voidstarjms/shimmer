@@ -68,6 +68,10 @@ func _process(delta: float) -> void:
 				if $"..".clutch_lvl < $"..".clutch_max_lvl:
 					$"..".clutch_lvl += 1
 			$"..".compute_handling_stats()
+			
+			# Update max display values for lateral and vertical velocity gauges
+			$"../../Camera3D/GUI".lat_vel_gauge.set_max_value(int($"..".max_spd * 1.25))
+			$"../../Camera3D/GUI".vrt_vel_gauge.set_max_value(int($"..".max_spd * 1.25))
 		if !Input.is_key_pressed(KEY_F2):
 			debug_F2_tap = false
 		# change poiser level
