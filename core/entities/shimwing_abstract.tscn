@@ -1,0 +1,32 @@
+[gd_scene format=3 uid="uid://ja452n35vask"]
+
+[ext_resource type="Script" uid="uid://bb8iuxjclxkgo" path="res://core/entities/shimwing_abstract.gd" id="1_jn0j0"]
+[ext_resource type="AudioStream" uid="uid://c1v8beqqxjk4r" path="res://assets/sfx/shimwing_thruster.wav" id="2_ab7sx"]
+[ext_resource type="Script" uid="uid://c3l5gd1b6xmno" path="res://core/entities/player/audio_stream_player_3d.gd" id="3_ovc37"]
+[ext_resource type="AudioStream" uid="uid://dsxu12gn6405r" path="res://assets/sfx/dmg_crash.wav" id="4_0502y"]
+[ext_resource type="AudioStream" uid="uid://bb0j8yi52lr28" path="res://assets/sfx/dead.wav" id="5_w1ijd"]
+[ext_resource type="AudioStream" uid="uid://dwkhtdg6shmi0" path="res://assets/sfx/cat_yowl_boost.wav" id="6_w1ijd"]
+
+[node name="shimwing_abstract" type="CharacterBody3D" unique_id=1329912969]
+rotation_edit_mode = 2
+motion_mode = 1
+script = ExtResource("1_jn0j0")
+
+[node name="sfx_thruster_hum" type="AudioStreamPlayer3D" parent="." unique_id=405775123]
+stream = ExtResource("2_ab7sx")
+volume_db = -20.194
+autoplay = true
+bus = &"Thruster Hum"
+script = ExtResource("3_ovc37")
+
+[node name="sfx_dmg_crash" type="AudioStreamPlayer3D" parent="." unique_id=275288357]
+stream = ExtResource("4_0502y")
+bus = &"Damage"
+
+[node name="sfx_dead" type="AudioStreamPlayer3D" parent="." unique_id=649117232]
+stream = ExtResource("5_w1ijd")
+volume_db = -6.234
+bus = &"Damage"
+
+[node name="sfx_dash" type="AudioStreamPlayer3D" parent="." unique_id=1046824658]
+stream = ExtResource("6_w1ijd")
