@@ -18,9 +18,11 @@ var health_bar : BarGauge
 var heading_number : NumberBox
 var lat_vel_gauge : SlidingArrowGauge
 var vrt_vel_gauge : SlidingArrowGauge
+var energy_bar : BarGauge
 
-var gui_color = Color.GREEN
-var warning_color = Color.RED
+const gui_color = Color.GREEN
+const energy_color = Color.MEDIUM_SLATE_BLUE
+const warning_color = Color.RED
 
 class TextScalable extends Node:
 	var label_list
@@ -399,7 +401,8 @@ class NumberBox extends TextScalable:
 		label.add_theme_font_override("font", load(UI_font_path))
 		label.add_theme_color_override("font_color", label_color)
 		label.add_theme_font_size_override("font_size", int(sz.y * wy))
-		label.position = pos_absolute
+		# Why is this mystery offset necessary?
+		label.position = pos_absolute + Vector2.UP * sz.y * wy / 4
 		label.text = "0"
 		base_label_size = view_rect.size
 		base_font_size = label.get_theme_font_size("font_size")
@@ -410,7 +413,8 @@ class NumberBox extends TextScalable:
 		var wx = view_rect.size.x
 		var wy = view_rect.size.y
 		var pos_absolute = Vector2(wx * pos.x, wy * pos.y)
-		label_list[0].position = pos_absolute
+		# Why is this mystery offset necessary?
+		label_list[0].position = pos_absolute + Vector2.UP * sz.y * wy / 4
 		return Rect2(Vector2(pos.x * wx, pos.y * wy), Vector2(sz.x * wx, sz.y * wy))
 	
 	func set_value(val : int):
@@ -743,8 +747,11 @@ func _ready() -> void:
 	altimeter_box = NumberBox.new(altimeter_box_pos, altimeter_box_sz, gui_color, view_rect)
 	self.add_child(altimeter_box)
 	
-	health_bar = BarGauge.new(Vector2(0.02, 0.95), Vector2(0.26, 0.03), [warning_color, gui_color], 0)
-	health_bar.set_framing(0.002, Color.GREEN, 0, 20)
+	var health_bar_y = 0.95
+	var health_bar_x_margin = 0.02
+	var health_bar_sz = Vector2(0.26, 0.03)
+	health_bar = BarGauge.new(Vector2(health_bar_x_margin, health_bar_y), health_bar_sz, [warning_color, gui_color], 0)
+	health_bar.set_framing(0.002, gui_color, 0, 20)
 	health_bar.set_bar2(1, Color.WHITE)
 	health_bar.set_flash(0.2, 30, 0.7)
 	health_bar.add_observer($"./GUI_health_beep")
@@ -758,14 +765,16 @@ func _ready() -> void:
 	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
+	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)
+	energy_bar = BarGauge.new(energy_bar_pos, health_bar_sz, [energy_color, energy_color], 0)
+	energy_bar.set_framing(0.002, gui_color, 0, 200)
+	energy_bar.set_bar2(1, Color.WHITE)
+	
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
 
 func _physics_process(delta: float) -> void:
 	queue_redraw()
-
-func update_health_bar(val : int) -> void:
-	health_bar.set_value(val)
 
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
@@ -800,8 +809,9 @@ func _draw() -> void:
 	draw_rect(altimeter_box_rect, gui_color, false)
 	altimeter_box.set_value(altitude)
 	
-	## Draw health bar
+	# Draw health bar
 	health_bar.set_value($"../../ZealousJay".health)
+	# TODO This doesn't need to be updated every tick, should use subject-observer
 	health_bar.set_max_value($"../../ZealousJay".max_health)
 	var health_bar_disp1 = health_bar.get_bar1(view_rect)
 	var health_bar_disp2 = health_bar.get_bar2(view_rect)
@@ -813,6 +823,21 @@ func _draw() -> void:
 	for i in health_bar_segments:
 		draw_line(i[0], i[1], Color.GREEN)
 	health_bar.step()
+	
+	# Draw energy bar
+	energy_bar.set_value($"../../ZealousJay".energy)
+	# TODO This doesn't need to be updated every tick, should use subject-observer
+	energy_bar.set_max_value($"../../ZealousJay".max_energy)
+	var energy_bar_disp1 = energy_bar.get_bar1(view_rect)
+	var energy_bar_disp2 = energy_bar.get_bar2(view_rect)
+	var energy_bar_bezel = energy_bar.get_bezel_rect(view_rect)
+	var energy_bar_segments = energy_bar.get_segment_lines(view_rect)
+	draw_rect(energy_bar_disp2, energy_bar.get_bar2_color())
+	draw_rect(energy_bar_disp1, energy_bar.get_bar1_color())
+	draw_rect(energy_bar_bezel, energy_bar.get_bezel_color(), false)
+	for i in energy_bar_segments:
+		draw_line(i[0], i[1], Color.GREEN)
+	energy_bar.step()
 	
 	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
 	var heading_angle = -Vector3.BACK.signed_angle_to(heading_vec, Vector3.DOWN)

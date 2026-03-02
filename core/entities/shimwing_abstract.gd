@@ -48,9 +48,11 @@ var yaw_demand = 0
 # Equipment levels
 const clutch_max_lvl = 19
 const poiser_max_lvl = 19
+const drive_max_lvl = 19
 const deflector_max_lvl = 19
 @export var clutch_lvl : int
 @export var poiser_lvl : int
+@export var drive_lvl : int
 @export var deflector_lvl : int
 # Equipment stat upgrade base values
 const max_spd_base = 24
@@ -62,6 +64,8 @@ const thrust_roll_base = 0.06
 const thrust_yaw_base = 0.06
 const poise_spring_const_base = 0.0875
 const poise_damping_base = 0.05
+const max_energy_base = 1000
+const energy_regen_base = max_energy_base / 600
 const max_health_base = 100
 # Equipment stat upgrade steps
 const max_spd_step = 1
@@ -70,10 +74,14 @@ const strafe_thrust_step = 0.004
 const rotation_thrust_step = 0.001
 const poise_spring_const_step = 0.0059
 const poise_damping_step = 0.0025
+const max_energy_step = 100
+const energy_regen_step = energy_regen_base * max_energy_step / max_energy_base
 const max_health_step = 20
 
+# Dash-related constants
 const dash_max_spd_multiplier = 2
 const dash_acc_multiplier = 2
+const dash_energy_cost = 200
 
 # Physics handling scalars
 var max_spd
@@ -108,8 +116,11 @@ var poise_acc = Vector3.ZERO
 const dash_duration = 60
 var dash_counter = 0.0
 
-@export var max_health : int
+var max_health : int
+var max_energy : int
+var energy_regen
 var health
+var energy
 
 var inactionable_timer = 0
 func set_inactionable_timer(time : int) -> void:
@@ -127,6 +138,8 @@ func compute_handling_stats():
 	thrust_yaw = thrust_yaw_base + rotation_thrust_step * clutch_lvl
 	poise_spring_const = poise_spring_const_base + poise_spring_const_step * poiser_lvl
 	poise_damping = poise_damping_base + poise_damping_step * poiser_lvl
+	max_energy = max_energy_base + max_energy_step * drive_lvl
+	energy_regen = energy_regen_base + energy_regen_step * drive_lvl
 	max_health = max_health_base + max_health_step * deflector_lvl
 
 func _ready() -> void:
@@ -152,6 +165,7 @@ func _ready() -> void:
 	transform.basis = Basis.FLIP_Z
 	
 	health = max_health
+	energy = max_energy
 	
 	thrust_demand = Array()
 	thrust_demand.resize(10)
@@ -173,8 +187,9 @@ func demand_yaw(x : float):
 # Dash mutator
 func dash():
 	if dash_counter == 0:
-		$"./sfx_dash".playing = true
-		dash_counter = dash_duration
+		if consume_energy(200, false) > 0:
+			$"./sfx_dash".playing = true
+			dash_counter = dash_duration
 
 func calc_pve_thrust():
 	# Main thruster demand
@@ -240,12 +255,28 @@ func take_damage(amount : int):
 	health -= amount
 	if health <= 0:
 		$"./sfx_dead".playing = true
-		# TODO move this logic to the player's take_damage implementation
-		var player = get_node("./player")
-		if player != null:
-			player.respawn()
+		# TODO this would make any craft that dies cause the player to respawn
+		# Some kind of inheritance solution is needed here
+		get_node("player").respawn()
+
+func consume_energy(amount : int, consume_remainder : bool) -> int:
+	# Compute how much would be left after consumption
+	var remainder = energy - amount
+	# If the remainder should be consumed even if there isn't enough, do so
+	if energy < amount and consume_remainder == true:
+		energy = 0
+	# Case where there's sufficient energy, normal consumption
+	elif remainder >= 0:
+		energy = remainder
+	# Return how much would be left if consumption occurred
+	return remainder
 
 func _physics_process(_delta: float) -> void:
+	# Regenerate energy if less than max
+	if energy < max_energy:
+		energy += energy_regen
+		energy = min(max_energy, energy)
+	
 	# Get thrust demand
 	thrust_demand.fill(0)
 	# Calculate thrust from each if actionable
