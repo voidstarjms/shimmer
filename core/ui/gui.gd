@@ -759,10 +759,12 @@ func _ready() -> void:
 	heading_number = NumberBox.new(Vector2(0.5 - altimeter_box_sz.x / 2, 0.01), altimeter_box_sz, gui_color, view_rect)
 	self.add_child(heading_number)
 	
-	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
+	# TODO this will need to pull from the player object to get the correct value when loading from save data
+	var max_spd = 24
+	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 2 * max_spd, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(lat_vel_gauge)
 	
-	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 30, 12, Vector2(0.05, 1), gui_color, view_rect)
+	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 2 * max_spd, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
 	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)

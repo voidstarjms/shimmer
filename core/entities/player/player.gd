@@ -6,6 +6,7 @@ const root3 = sqrt(3)
 var debug = true
 var debug_F2_tap = false
 var debug_F3_tap = false
+var debug_F4_tap = false
 var debug_F5_tap = false
 
 var cam_prev_y = Vector3.UP
@@ -70,8 +71,8 @@ func _process(delta: float) -> void:
 			$"..".compute_handling_stats()
 			
 			# Update max display values for lateral and vertical velocity gauges
-			$"../../Camera3D/GUI".lat_vel_gauge.set_max_value(int($"..".max_spd * 1.25))
-			$"../../Camera3D/GUI".vrt_vel_gauge.set_max_value(int($"..".max_spd * 1.25))
+			$"../../Camera3D/GUI".lat_vel_gauge.set_max_value(int($"..".max_spd * 2))
+			$"../../Camera3D/GUI".vrt_vel_gauge.set_max_value(int($"..".max_spd * 2))
 		if !Input.is_key_pressed(KEY_F2):
 			debug_F2_tap = false
 		# change poiser level
@@ -86,6 +87,19 @@ func _process(delta: float) -> void:
 			$"..".compute_handling_stats()
 		if !Input.is_key_pressed(KEY_F3):
 			debug_F3_tap = false
+		# change drive level
+		if Input.is_key_pressed(KEY_F4) and debug_F4_tap == false:
+			debug_F4_tap = true
+			if Input.is_key_label_pressed(KEY_SHIFT):
+				if $"..".drive_lvl > 0:
+					$"..".drive_lvl -= 1
+			else:
+				if $"..".drive_lvl < $"..".drive_max_lvl:
+					$"..".drive_lvl += 1
+			$"..".compute_handling_stats()
+			$"..".energy = $"..".max_energy
+		if !Input.is_key_pressed(KEY_F4):
+			debug_F4_tap = false
 		# change armor level
 		if Input.is_key_pressed(KEY_F5) and debug_F5_tap == false:
 			debug_F5_tap = true

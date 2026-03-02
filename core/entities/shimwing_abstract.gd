@@ -74,8 +74,8 @@ const strafe_thrust_step = 0.004
 const rotation_thrust_step = 0.001
 const poise_spring_const_step = 0.0059
 const poise_damping_step = 0.0025
-const max_energy_step = 100
-const energy_regen_step = energy_regen_base * max_energy_step / max_energy_base
+const max_energy_step = 50
+const energy_regen_step = energy_regen_base * float(max_energy_step) / max_energy_base
 const max_health_step = 20
 
 # Dash-related constants
