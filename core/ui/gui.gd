@@ -767,6 +767,10 @@ func _ready() -> void:
 	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 2 * max_spd, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
+	# TODO because the max value is initialized to 0 and then immediately set correctly, the second bar takes time to step to the
+	# correct position, meaning it doesn't show up on depletion for a little bit. This problem also shows up when the max value
+	# is updated. I'll need to put the max value in here to start and also figure out a way to update the under-bar correctly.
+	# This problem also exists for the health bar.
 	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)
 	energy_bar = BarGauge.new(energy_bar_pos, health_bar_sz, [energy_color, energy_color], 0)
 	energy_bar.set_framing(0.002, gui_color, 0, 200)
