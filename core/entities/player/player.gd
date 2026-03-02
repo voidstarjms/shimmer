@@ -22,6 +22,11 @@ const poise_screenshake_mag = 0.05
 const screenshake_mag_decay = 0.002
 const screenshake_jit_decay = 0.001
 
+var dash_tap_count = 0
+var dash_tap_spacing_timer = 0
+const dash_tap_spacing = 30
+var prev_ry_amount = 0
+
 func respawn():
 	$"..".transform.origin = Vector3.UP
 	$"..".transform.basis = Basis.FLIP_Z
@@ -145,9 +150,19 @@ func _process(delta: float) -> void:
 		$"..".demand_yaw(-Input.get_action_strength("yaw_left"))
 	
 	# Dash
-	if Input.is_action_just_pressed("dash"):
+	dash_tap_spacing_timer -= 1
+	if dash_tap_spacing_timer == 0:
+		dash_tap_count = 0
+	if Input.get_action_strength("thrust_forward") > 0.5 and prev_ry_amount < 0.5:
+		dash_tap_count += 1
+		dash_tap_spacing_timer = dash_tap_spacing
+	if dash_tap_count >= 2 or Input.is_action_just_pressed("dash"):
+		dash_tap_count = 0
+		dash_tap_spacing_timer = 0
 		$"..".dash()
 		#get_node("../..").set_slomo(0.2, [10, 30, 30])
+	# Update right stick y-axis previous amount
+	prev_ry_amount = Input.get_action_strength("thrust_forward")
 		
 	## Assign camera position
 	var cam = get_node("../../Camera3D")
