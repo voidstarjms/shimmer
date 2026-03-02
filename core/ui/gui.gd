@@ -24,6 +24,25 @@ const gui_color = Color.GREEN
 const energy_color = Color.MEDIUM_SLATE_BLUE
 const warning_color = Color.RED
 
+func set_max_health(val : int):
+	# This assumes the value will be set to max whenever it changes (okay assumption)
+	health_bar.set_max_value(val)
+	health_bar.set_value(val)
+	health_bar.step()
+	health_bar.reset_bar2()
+
+func set_max_energy(val : int):
+	# This assumes the value will be set to max whenever it changes (okay assumption)
+	energy_bar.set_max_value(val)
+	energy_bar.set_value(val)
+	energy_bar.step()
+	energy_bar.reset_bar2()
+	print(energy_bar.bar2_display_value)
+
+func set_max_spd(val : int):
+	lat_vel_gauge.set_max_value(val)
+	vrt_vel_gauge.set_max_value(val)
+
 class TextScalable extends Node:
 	var label_list
 	var base_label_size
@@ -576,6 +595,10 @@ class BarGauge:
 	func update_observers():
 		for i in flash_observer_list:
 			i.update()
+	
+	# Update the bar2 value to exactly match bar1
+	func reset_bar2():
+		bar2_display_value = bar1_display_value
 
 class SlidingArrowGauge extends TextScalable:
 	var pos
@@ -760,11 +783,10 @@ func _ready() -> void:
 	self.add_child(heading_number)
 	
 	# TODO this will need to pull from the player object to get the correct value when loading from save data
-	var max_spd = 24
-	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 2 * max_spd, 12, Vector2(0.05, 1), gui_color, view_rect)
+	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(lat_vel_gauge)
 	
-	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 2 * max_spd, 12, Vector2(0.05, 1), gui_color, view_rect)
+	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
 	# TODO because the max value is initialized to 0 and then immediately set correctly, the second bar takes time to step to the
@@ -817,8 +839,6 @@ func _draw() -> void:
 	
 	# Draw health bar
 	health_bar.set_value($"../../ZealousJay".health)
-	# TODO This doesn't need to be updated every tick, should use subject-observer
-	health_bar.set_max_value($"../../ZealousJay".max_health)
 	var health_bar_disp1 = health_bar.get_bar1(view_rect)
 	var health_bar_disp2 = health_bar.get_bar2(view_rect)
 	var health_bar_bezel = health_bar.get_bezel_rect(view_rect)
@@ -832,8 +852,6 @@ func _draw() -> void:
 	
 	# Draw energy bar
 	energy_bar.set_value($"../../ZealousJay".energy)
-	# TODO This doesn't need to be updated every tick, should use subject-observer
-	energy_bar.set_max_value($"../../ZealousJay".max_energy)
 	var energy_bar_disp1 = energy_bar.get_bar1(view_rect)
 	var energy_bar_disp2 = energy_bar.get_bar2(view_rect)
 	var energy_bar_bezel = energy_bar.get_bezel_rect(view_rect)

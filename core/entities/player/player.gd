@@ -41,7 +41,13 @@ func respawn():
 	$"..".set_inactionable_timer(30)
 
 func _ready() -> void:
+	await get_parent().ready
+	await $"../../Camera3D/GUI".ready
+	
 	start_pos = $"..".position
+	$"../../Camera3D/GUI".set_max_spd(int($"..".max_spd * 2))
+	$"../../Camera3D/GUI".set_max_energy(int($"..".max_energy))
+	$"../../Camera3D/GUI".set_max_health(int($"..".max_health))
 
 func screenshake_set_direction(dir : Vector2):
 	screenshake_direction = dir
@@ -76,8 +82,7 @@ func _process(delta: float) -> void:
 			$"..".compute_handling_stats()
 			
 			# Update max display values for lateral and vertical velocity gauges
-			$"../../Camera3D/GUI".lat_vel_gauge.set_max_value(int($"..".max_spd * 2))
-			$"../../Camera3D/GUI".vrt_vel_gauge.set_max_value(int($"..".max_spd * 2))
+			$"../../Camera3D/GUI".set_max_spd(int($"..".max_spd * 2))
 		if !Input.is_key_pressed(KEY_F2):
 			debug_F2_tap = false
 		# change poiser level
@@ -102,6 +107,7 @@ func _process(delta: float) -> void:
 				if $"..".drive_lvl < $"..".drive_max_lvl:
 					$"..".drive_lvl += 1
 			$"..".compute_handling_stats()
+			$"../../Camera3D/GUI".set_max_energy($"..".max_energy)
 			$"..".energy = $"..".max_energy
 		if !Input.is_key_pressed(KEY_F4):
 			debug_F4_tap = false
@@ -115,6 +121,7 @@ func _process(delta: float) -> void:
 				if $"..".deflector_lvl < $"..".deflector_max_lvl:
 					$"..".deflector_lvl += 1
 			$"..".compute_handling_stats()
+			$"../../Camera3D/GUI".set_max_health($"..".max_health)
 			$"..".health = $"..".max_health
 		if !Input.is_key_pressed(KEY_F5):
 			debug_F5_tap = false
