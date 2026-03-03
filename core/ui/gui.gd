@@ -4,7 +4,6 @@ const pi_over_6 = PI / 6
 const pi_over_4 = PI / 4
 const pi_over_2 = PI / 2
 const sqrt2_over_2 = sqrt(2) / 2
-const compass_rose = ["N", "E", "S", "W"]
 const UI_font_path = "res://CONSOLA.TTF"
 
 var pitch_ladder : PitchLadder
@@ -23,6 +22,8 @@ var energy_bar : BarGauge
 const gui_color = Color.GREEN
 const energy_color = Color.MEDIUM_SLATE_BLUE
 const warning_color = Color.RED
+
+@onready var player_node = $"../../ZealousJay"
 
 func set_max_health(val : int):
 	# This assumes the value will be set to max whenever it changes (okay assumption)
@@ -688,8 +689,8 @@ class SlidingArrowGauge extends TextScalable:
 			1:
 				label_list[0].position = Vector2(px - label_list[0].size.x, py + sy - label_list[0].size.y/2)
 				label_list[1].position = Vector2(px - label_list[0].size.x, py - label_list[0].size.y/2)
-				label_list[0].text = str(max_value)
-				label_list[1].text = str(-max_value)
+				label_list[0].text = str(-max_value)
+				label_list[1].text = str(max_value)
 				
 				var arrow_offset = sy * (0.5 + value / max_value * 0.5)
 				ret_arr.append([[Vector2(px + sx + sx * arrow_d.y, py + sy - sy * arrow_d.x - arrow_offset), Vector2(px + sx, py + sy - arrow_offset)],
@@ -782,17 +783,12 @@ func _ready() -> void:
 	heading_number = NumberBox.new(Vector2(0.5 - altimeter_box_sz.x / 2, 0.01), altimeter_box_sz, gui_color, view_rect)
 	self.add_child(heading_number)
 	
-	# TODO this will need to pull from the player object to get the correct value when loading from save data
 	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(lat_vel_gauge)
 	
 	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
-	# TODO because the max value is initialized to 0 and then immediately set correctly, the second bar takes time to step to the
-	# correct position, meaning it doesn't show up on depletion for a little bit. This problem also shows up when the max value
-	# is updated. I'll need to put the max value in here to start and also figure out a way to update the under-bar correctly.
-	# This problem also exists for the health bar.
 	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)
 	energy_bar = BarGauge.new(energy_bar_pos, health_bar_sz, [energy_color, energy_color], 0)
 	energy_bar.set_framing(0.002, gui_color, 0, 200)
@@ -804,9 +800,25 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	queue_redraw()
 
+func get_player_transform(path : Node) -> Transform3D:
+	return path.transform
+
+func get_player_velocity(path : Node) -> Vector3:
+	return path.vel_vec
+
+func get_player_health(path : Node) -> int:
+	return path.health
+
+func get_player_energy(path : Node) -> int:
+	return path.energy
+
 func _draw() -> void:
 	var view_rect = get_viewport_rect()
-	var raw_fwd = -$"../../ZealousJay".transform.basis.z
+	var player_transform = get_player_transform(player_node)
+	var player_vel = get_player_velocity(player_node)
+	var player_health = get_player_health(player_node)
+	var player_energy = get_player_energy(player_node)
+	var raw_fwd = -player_transform.basis.z
 	
 	# Draw pitch ladder
 	var pitch_ladder_data = pitch_ladder.construct_ladder_array(view_rect, raw_fwd)
@@ -819,8 +831,8 @@ func _draw() -> void:
 		draw_line(i[1][0], i[1][1], gui_color)
 
 	# Draw speed tape
-	var unsigned_fwd_vel = $"../../ZealousJay".vel_vec.project(raw_fwd).length()
-	var fwd_vel = unsigned_fwd_vel * $"../../ZealousJay".vel_vec.project(raw_fwd).normalized().dot(raw_fwd)
+	var unsigned_fwd_vel = player_vel.project(raw_fwd).length()
+	var fwd_vel = unsigned_fwd_vel * player_vel.project(raw_fwd).normalized().dot(raw_fwd)
 	var speed_tape_array = speed_tape.construct(false, fwd_vel, view_rect)
 	for i in speed_tape_array:
 		draw_line(i[0], i[1], gui_color)
@@ -829,7 +841,7 @@ func _draw() -> void:
 	speed_box.set_value(fwd_vel)
 	
 	# Draw altimeter tape
-	var altitude = $"../../ZealousJay".transform.origin.y
+	var altitude = player_transform.origin.y
 	var altimeter_tape_array = altimeter_tape.construct(true, altitude, view_rect)
 	for i in altimeter_tape_array:
 		draw_line(i[0], i[1], gui_color)
@@ -838,7 +850,7 @@ func _draw() -> void:
 	altimeter_box.set_value(altitude)
 	
 	# Draw health bar
-	health_bar.set_value($"../../ZealousJay".health)
+	health_bar.set_value(player_health)
 	var health_bar_disp1 = health_bar.get_bar1(view_rect)
 	var health_bar_disp2 = health_bar.get_bar2(view_rect)
 	var health_bar_bezel = health_bar.get_bezel_rect(view_rect)
@@ -851,7 +863,7 @@ func _draw() -> void:
 	health_bar.step()
 	
 	# Draw energy bar
-	energy_bar.set_value($"../../ZealousJay".energy)
+	energy_bar.set_value(player_energy)
 	var energy_bar_disp1 = energy_bar.get_bar1(view_rect)
 	var energy_bar_disp2 = energy_bar.get_bar2(view_rect)
 	var energy_bar_bezel = energy_bar.get_bezel_rect(view_rect)
@@ -863,6 +875,7 @@ func _draw() -> void:
 		draw_line(i[0], i[1], Color.GREEN)
 	energy_bar.step()
 	
+	# Draw heading number
 	var heading_vec = Vector3(raw_fwd.x, 0, raw_fwd.z).normalized()
 	var heading_angle = -Vector3.BACK.signed_angle_to(heading_vec, Vector3.DOWN)
 	if heading_angle < 0:
@@ -870,8 +883,9 @@ func _draw() -> void:
 	heading_number.set_value(int(rad_to_deg(heading_angle)))
 	draw_rect(heading_number.construct(view_rect), gui_color, false)
 	
-	var right_vec = $"../../ZealousJay".transform.basis.x
-	var lat_vel = $"../../ZealousJay".vel_vec.project(right_vec)
+	# Draw lateral speed gauge
+	var right_vec = player_transform.basis.x
+	var lat_vel = player_vel.project(right_vec)
 	lat_vel_gauge.set_value(lat_vel.length() * sign(lat_vel.dot(right_vec)))
 	var lat_vel_tick_array = lat_vel_gauge.construct(view_rect)
 	draw_line(lat_vel_tick_array[0][0][0], lat_vel_tick_array[0][0][1], gui_color)
@@ -879,8 +893,9 @@ func _draw() -> void:
 	for i in range(1, lat_vel_tick_array.size()):
 		draw_line(lat_vel_tick_array[i][0], lat_vel_tick_array[i][1], gui_color)
 	
-	var up_vec = $"../../ZealousJay".transform.basis.y
-	var vrt_vel = $"../../ZealousJay".vel_vec.project(up_vec)
+	# Draw vertical speed gauge
+	var up_vec = player_transform.basis.y
+	var vrt_vel = player_vel.project(up_vec)
 	vrt_vel_gauge.set_value(vrt_vel.length() * sign(vrt_vel.dot(up_vec)))
 	var vrt_vel_tick_array = vrt_vel_gauge.construct(view_rect)
 	draw_line(vrt_vel_tick_array[0][0][0], vrt_vel_tick_array[0][0][1], gui_color)
