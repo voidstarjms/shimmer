@@ -309,6 +309,10 @@ func _physics_process(_delta: float) -> void:
 
 	transform = transform.orthonormalized()
 	
+	# TODO serious problems with this implementation. Acceleration with any method other than boost in
+	# the opposite direction of movement if moving faster than max speed do not work, thrust kicks in
+	# once speed falls below max speed. Also, speed can actually exceed max speed because it's limiting
+	# speed per axis rather than along the velocity vector (bhop type issue but in 3D)
 	# Accelerate craft, taking max speed into account
 	var prev_vel_vec = vel_vec
 	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)

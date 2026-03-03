@@ -176,7 +176,7 @@ func _process(delta: float) -> void:
 	if cam != null:
 		# Camera vector interpolation
 		var cam_y_vec = cam_prev_y.lerp($"..".transform.basis.y, 0.1)
-		var cam_z_vec = cam_prev_z.lerp(Vector3.BACK if abs($"..".transform.basis.z.dot(Vector3.UP)) == 1 else lerp(-$"..".vel_vec, $"..".transform.basis.z, 0.99), 0.1)
+		var cam_z_vec = cam_prev_z.lerp(Vector3.BACK if abs($"..".transform.basis.z.dot(Vector3.UP)) == 1 else lerp(-$"..".vel_vec, $"..".transform.basis.z, 1), 0.1)
 		cam_prev_z = cam_z_vec
 		cam_prev_y = cam_y_vec
 		
