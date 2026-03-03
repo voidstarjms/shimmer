@@ -309,58 +309,25 @@ func _physics_process(_delta: float) -> void:
 
 	transform = transform.orthonormalized()
 	
-	# TODO serious problems with this implementation. Acceleration with any method other than boost in
-	# the opposite direction of movement if moving faster than max speed do not work, thrust kicks in
-	# once speed falls below max speed. Also, speed can actually exceed max speed because it's limiting
-	# speed per axis rather than along the velocity vector (bhop type issue but in 3D)
-	# Accelerate craft, taking max speed into account
 	var prev_vel_vec = vel_vec
 	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)
+	# Transform from local acceleration reference frame to global frame and apply acceleration 
 	var acc_transformed = transform.basis * acc_vec
-	# x direction
-	if abs(vel_vec.x) > actual_max_speed:
-		var result = vel_vec.x - max_drag_decel * sign(vel_vec.x) * Engine.time_scale
-		if abs(result) < actual_max_speed:
-			vel_vec.x = actual_max_speed * sign(vel_vec.x)
-		else:
-			vel_vec.x = result
+	vel_vec += acc_transformed * Engine.time_scale
+	var velocity_direction = vel_vec.normalized()
+	# Prevent speed from increasing if already above max speed
+	var prev_spd = prev_vel_vec.length()
+	if prev_spd > actual_max_speed and vel_vec.length() > prev_spd:
+		vel_vec = velocity_direction * prev_vel_vec.length()
+	# Decelerate exactly to zero
+	if vel_vec.length() < max_drag_decel:
+		vel_vec = Vector3.ZERO
 	else:
-		vel_vec.x += acc_transformed.x * Engine.time_scale
-		vel_vec.x = min(abs(vel_vec.x), actual_max_speed) * sign(vel_vec.x)
-	# y direction
-	if abs(vel_vec.y) > actual_max_speed:
-		var result = vel_vec.y - max_drag_decel * sign(vel_vec.y) * Engine.time_scale
-		if abs(result) < actual_max_speed:
-			vel_vec.y = actual_max_speed * sign(vel_vec.y)
-		else:
-			vel_vec.y = result
-	else:
-		vel_vec.y += acc_transformed.y * Engine.time_scale
-		vel_vec.y = min(abs(vel_vec.y), actual_max_speed) * sign(vel_vec.y)
-	# z direction
-	if abs(vel_vec.z) > actual_max_speed:
-		var result = vel_vec.z - max_drag_decel * sign(vel_vec.z) * Engine.time_scale
-		if abs(result) < actual_max_speed:
-			vel_vec.z = actual_max_speed * sign(vel_vec.z)
-		else:
-			vel_vec.z = result
-	else:
-		vel_vec.z += acc_transformed.z * Engine.time_scale
-		vel_vec.z = min(abs(vel_vec.z), actual_max_speed) * sign(vel_vec.z)
+		vel_vec -= max_drag_decel * velocity_direction
 	
 	# Decrement dash time counter
 	if dash_counter > 0:
 		dash_counter -= Engine.time_scale
-	
-	# Apply deceleration
-	if lat_demand == 0 and vrt_demand == 0 and lon_demand == 0 and dash_counter == 0:
-		vel_vec = vel_vec - max_drag_decel * vel_vec.normalized() * Engine.time_scale
-		if sign(prev_vel_vec.x) != sign(vel_vec.x):
-			vel_vec.x = 0
-		if sign(prev_vel_vec.y) != sign(vel_vec.y):
-			vel_vec.y = 0
-		if sign(prev_vel_vec.z) != sign(vel_vec.z):
-			vel_vec.z = 0
 	
 	## Calculate poise
 	# Calculate undamped poise acceleration
