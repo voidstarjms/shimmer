@@ -132,8 +132,11 @@ class PitchLadder extends TextScalable:
 			base_rung_angle = ceil((pitch_angle + (gap_value * max_visible_rungs) / 2) / gap_value) * gap_value
 		var rung_vrt_gap_modulo = fmod(pitch_angle, gap_value)
 		var rung_vrt_offset = -1000
+		# Iterate over all possible rungs 
 		for rung_ix in max_visible_rungs:
+			# Compute rung vertical offset
 			rung_vrt_offset = (-(int(max_visible_rungs / 2)) + rung_ix + rung_vrt_gap_modulo / gap_value) * rung_spacing
+			# Compute angle of the rung
 			var snapped_rung_angle = int(base_rung_angle - gap_value * rung_ix)
 			var rung_angle = snapped_rung_angle - rung_vrt_gap_modulo
 			# Cull rung if angle is out of bounds
@@ -143,12 +146,15 @@ class PitchLadder extends TextScalable:
 				break
 			var rung_vrt_vec = Vector2.UP * rung_vrt_offset * wy
 			
+			# Define inner and outer offsets from center of each rung
 			var rung_outer_vec = rung_outer_width * wx * Vector2.RIGHT
 			var rung_inner_vec = rung_inner_width * wx * Vector2.RIGHT
+			# Set text label value and position
 			label_list[rung_ix].visible = true
 			label_list[rung_ix].text = str(snapped_rung_angle)
 			label_list[rung_ix].position = center - rung_outer_vec - rung_vrt_vec
 			
+			# Define and package rung positions
 			var rung_left = [center - rung_outer_vec - rung_vrt_vec, center - rung_inner_vec - rung_vrt_vec]
 			var rung_right = [center + rung_outer_vec - rung_vrt_vec, center + rung_inner_vec - rung_vrt_vec]
 			ret_arr.append([rung_left, rung_right])
@@ -219,21 +225,24 @@ class HeadingGauge extends TextScalable:
 		var sx = sz.x * wx
 		var sy = sz.y * wy
 		var ret_arr = Array()
+		# Compute projected heading vector and heading angle 
 		var heading_vec = Vector3(fwd_vec.x, 0, fwd_vec.z).normalized()
 		var heading_angle = Vector3.BACK.signed_angle_to(heading_vec, Vector3.DOWN)
+		# Make sure heading angle loops from 0 to 2PI
 		if heading_angle < 0:
 			heading_angle += TAU
 		if heading_angle > TAU:
 			heading_angle -= TAU
+		
 		var clamped_heading_angle = fmod(heading_angle / angle_divisor, pi_over_2 / angle_divisor)
 		var clamped_heading_vec = Vector3.BACK.rotated(Vector3.DOWN, clamped_heading_angle)
-		var center = px + sx / 2
 		
-		#for i in label_list:
-			#i.visible = false
+		# I think this is a magic number, not sure why it works
 		for i in 2 * subdivision_count:
+			# Compute the vector of the marker direction relative to dead center, then compute the angle
 			var marker_vec = Vector3.BACK.rotated(Vector3.UP, i * pi_over_4 / subdivision_count - pi_over_4)
 			var marker_angle = marker_vec.signed_angle_to(clamped_heading_vec, Vector3.DOWN)
+			# Use the marker angle to project the marker vector onto the UI plane
 			var marker_horiz_offset = Vector2.RIGHT * sx / 2 * marker_distance * marker_angle * 90.0 / subdivision_count
 			if marker_horiz_offset.x > sx / 2:
 				break
@@ -392,6 +401,7 @@ class TapeGauge extends TextScalable:
 				tick_end = Vector2(x_absolute + tape_width, y_absolute + tape_height - tick_offset)
 				label_position = tick_start - Vector2(font_size, font_size)
 			
+			# Set position of text labels based on major tick marks
 			if is_major_tick == true:
 				if label_position.y > (pos.y + (value_box_pos + value_box_height) * sz.y) * wy or label_position.y + font_size < (pos.y + value_box_pos * sz.y) * wy:
 					label_list[major_tick_index].visible = true
@@ -611,13 +621,9 @@ class SlidingArrowGauge extends TextScalable:
 	var arrow_d
 	
 	func _init(p : Vector2, s : Vector2, orient : int, max_val : int, subdiv : float, arrow_dim : Vector2, label_color : Color, view_rect : Rect2):
-		var wx = view_rect.size.x
 		var wy = view_rect.size.y
 		pos = p
 		sz = s
-		var px = wx * p.x
-		var py = wy * p.y
-		var sx = wx * s.x
 		var sy = wy * s.y
 		
 		orientation = orient
@@ -666,6 +672,7 @@ class SlidingArrowGauge extends TextScalable:
 		
 		var ret_arr = Array()
 		var ticks = subdiv_count + 2
+		# TODO The cases here should be factored out into a helper method
 		match orientation:
 			0:
 				label_list[0].position = Vector2(px - label_list[0].size.x/2, py + sy)
@@ -674,9 +681,11 @@ class SlidingArrowGauge extends TextScalable:
 				label_list[0].text = str(-max_value)
 				label_list[1].text = str(max_value)
 				
+				# Compute arrow offset and append to head of array
 				var arrow_offset = sx * (0.5 + value / max_value * 0.5)
 				ret_arr.append([[Vector2(px - sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y), Vector2(px + arrow_offset, py)],
 					[Vector2(px + arrow_offset, py), Vector2(px + sx * arrow_d.x + arrow_offset, py - sy * arrow_d.y)]])
+				# Compute and append tick marks
 				for i in ticks + 1:
 					var div_frac = i / ticks
 					# TODO get rid of these magic numbers and make it more flexible
@@ -724,6 +733,7 @@ func _on_window_resized():
 func _ready() -> void:
 	var view_rect = get_viewport_rect()
 	
+	# Pitch ladder
 	pitch_ladder = PitchLadder.new(Vector2(0.3, 0.225), Vector2(0.4, 0.55), 0.016, 0.004, 0.04, 0.25, 5, view_rect)
 	pitch_ladder.set_label_color(gui_color)
 	self.add_child(pitch_ladder)
@@ -731,6 +741,7 @@ func _ready() -> void:
 	#heading_indicator = HeadingGauge.new(Vector2(0.2, 0.02), Vector2(0.6, 0.03), 0.2, 6, 1, gui_color, view_rect)
 	#self.add_child(heading_indicator)
 	
+	# Forward velocity tape
 	var speed_tape_x = 0.2675
 	var speed_tape_y = 0.35
 	var speed_tape_w = 0.0125
@@ -744,6 +755,7 @@ func _ready() -> void:
 	speed_tape.set_tape_offset(0.5)
 	self.add_child(speed_tape)
 	
+	# Forward velocity number display
 	var speed_box_x = speed_tape_x - 2 * speed_tape_w
 	var speed_box_y = speed_tape_y + speed_tape_gap_y * speed_tape_h
 	var speed_box_pos = Vector2(speed_box_x, speed_box_y)
@@ -751,6 +763,7 @@ func _ready() -> void:
 	speed_box = NumberBox.new(speed_box_pos, speed_box_sz, gui_color, view_rect)
 	self.add_child(speed_box)
 	
+	# Altimeter tape
 	var altimeter_tape_x = 0.72
 	var altimeter_tape_y = 0.35
 	var altimeter_tape_w = 0.0125
@@ -764,6 +777,7 @@ func _ready() -> void:
 	altimeter_tape.set_tape_offset(0.5)
 	self.add_child(altimeter_tape)
 	
+	# Altimeter number display
 	var altimeter_box_x = altimeter_tape_x
 	var altimeter_box_y = altimeter_tape_y + altimeter_tape_gap_y * altimeter_tape_h
 	var altimeter_box_pos = Vector2(altimeter_box_x, altimeter_box_y)
@@ -771,6 +785,7 @@ func _ready() -> void:
 	altimeter_box = NumberBox.new(altimeter_box_pos, altimeter_box_sz, gui_color, view_rect)
 	self.add_child(altimeter_box)
 	
+	# Health bar
 	var health_bar_y = 0.95
 	var health_bar_x_margin = 0.02
 	var health_bar_sz = Vector2(0.26, 0.03)
@@ -780,15 +795,19 @@ func _ready() -> void:
 	health_bar.set_flash(0.2, 30, 0.7)
 	health_bar.add_observer($"./GUI_health_beep")
 	
+	# Heading angle number display
 	heading_number = NumberBox.new(Vector2(0.5 - altimeter_box_sz.x / 2, 0.01), altimeter_box_sz, gui_color, view_rect)
 	self.add_child(heading_number)
 	
+	# Lateral velocity scale
 	lat_vel_gauge = SlidingArrowGauge.new(Vector2(0.4, 0.85), Vector2(0.2, 0.02), 0, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(lat_vel_gauge)
 	
+	# Vertical velocity scale
 	vrt_vel_gauge = SlidingArrowGauge.new(Vector2(0.8, 0.35), Vector2(0.015, 0.3), 1, 0, 12, Vector2(0.05, 1), gui_color, view_rect)
 	self.add_child(vrt_vel_gauge)
 	
+	# Energy bar
 	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)
 	energy_bar = BarGauge.new(energy_bar_pos, health_bar_sz, [energy_color, energy_color], 0)
 	energy_bar.set_framing(0.002, gui_color, 0, 200)
@@ -800,15 +819,13 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	queue_redraw()
 
+# Accessors for player fields
 func get_player_transform(path : Node) -> Transform3D:
 	return path.transform
-
 func get_player_velocity(path : Node) -> Vector3:
 	return path.vel_vec
-
 func get_player_health(path : Node) -> int:
 	return path.health
-
 func get_player_energy(path : Node) -> int:
 	return path.energy
 
