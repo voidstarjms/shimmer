@@ -3,7 +3,10 @@
 [ext_resource type="Script" uid="uid://bkibaufktxo1q" path="res://core/world/main.gd" id="1_h2yge"]
 [ext_resource type="PackedScene" uid="uid://c31v0n3pj2fm6" path="res://core/entities/player/player.tscn" id="1_ig7tw"]
 [ext_resource type="Script" uid="uid://c0j45tkbeq0sl" path="res://core/camera_3d.gd" id="2_0xm2m"]
+[ext_resource type="Shader" uid="uid://kaj6xvbeomla" path="res://assets/grass_and_rock.gdshader" id="2_halfn"]
+[ext_resource type="Texture2D" uid="uid://btva8j5yk6jgr" path="res://assets/cobble.png" id="3_iypqr"]
 [ext_resource type="Script" uid="uid://b8aryyt054quw" path="res://label.gd" id="4_1bvp3"]
+[ext_resource type="Texture2D" uid="uid://cuvmfcgfbf5h2" path="res://assets/grasstop.png" id="4_o5cyh"]
 [ext_resource type="Script" uid="uid://bmbs4yirpaspu" path="res://core/ui/gui.gd" id="5_lquwl"]
 [ext_resource type="AudioStream" uid="uid://dd4ewnlok47ht" path="res://assets/sfx/health_beep.wav" id="6_272bh"]
 [ext_resource type="Script" uid="uid://lwfiefwdiw7w" path="res://core/ui/gui_health_beep.gd" id="7_5vw27"]
@@ -13,11 +16,20 @@ size = Vector3(300, 2, 300)
 
 [sub_resource type="ImageTexture" id="ImageTexture_ig7tw"]
 
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_jx7nv"]
+render_priority = 1
+shader = ExtResource("2_halfn")
+shader_parameter/top_texture = ExtResource("4_o5cyh")
+shader_parameter/side_texture = ExtResource("3_iypqr")
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_0xm2m"]
+next_pass = SubResource("ShaderMaterial_jx7nv")
 shading_mode = 0
 diffuse_mode = 1
 specular_mode = 2
+albedo_color = Color(0.080783345, 0.080783345, 0.0807833, 1)
 albedo_texture = SubResource("ImageTexture_ig7tw")
+uv1_world_triplanar = true
 texture_filter = 0
 
 [sub_resource type="BoxMesh" id="BoxMesh_ig7tw"]

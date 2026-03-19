@@ -18,6 +18,7 @@ var start_pos
 var screenshake_direction = Vector2.ZERO
 var screenshake_magnitude = 0
 var screenshake_jitter = 0
+var shake_position = 0
 const poise_screenshake_mag = 0.05
 const screenshake_mag_decay = 0.002
 const screenshake_jit_decay = 0.001
@@ -170,7 +171,7 @@ func _process(delta: float) -> void:
 		#get_node("../..").set_slomo(0.2, [10, 30, 30])
 	# Update right stick y-axis previous amount
 	prev_ry_amount = Input.get_action_strength("thrust_forward")
-		
+	
 	## Assign camera position
 	var cam = get_node("../../Camera3D")
 	if cam != null:
@@ -185,7 +186,9 @@ func _process(delta: float) -> void:
 		cam.transform.origin = $"..".transform.origin + cam_z_vec + cam_y_vec
 		
 		# Add screenshake
-		var screenshake_offset = randf_range(0, screenshake_magnitude) * screenshake_direction + screenshake_jitter * Vector2.RIGHT.rotated(randf_range(0, TAU))
+		var screenshake_offset = sin(shake_position) * screenshake_magnitude * screenshake_direction + screenshake_jitter * Vector2.RIGHT.rotated(randf_range(0, TAU))
+		shake_position += delta
+		shake_position = fmod(shake_position, TAU)
 		screenshake_offset = lerp(prev_screenshake_offset, screenshake_offset, 0.2)
 		prev_screenshake_offset = screenshake_offset
 		cam.transform.origin += cam.transform.basis.x * screenshake_offset.x + cam.transform.basis.y * screenshake_offset.y

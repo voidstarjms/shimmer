@@ -38,7 +38,6 @@ func set_max_energy(val : int):
 	energy_bar.set_value(val)
 	energy_bar.step()
 	energy_bar.reset_bar2()
-	print(energy_bar.bar2_display_value)
 
 func set_max_spd(val : int):
 	lat_vel_gauge.set_max_value(val)
@@ -63,13 +62,13 @@ class TextScalable extends Node:
 class PitchLadder extends TextScalable:
 	var position
 	var size
-	var level_mark_inner_width# = 0.164
+	var level_mark_inner_width
 	var level_mark_len
 	var level_mark_margin
-	var rung_outer_width# = 0.16
-	var rung_inner_width# = 0.12
+	var rung_outer_width
+	var rung_inner_width
 	var rung_length
-	var max_vert# = 0.375
+	var max_vert
 	var rung_spacing
 	var max_visible_rungs
 	var gap_value
