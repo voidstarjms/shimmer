@@ -23,10 +23,60 @@ const poise_screenshake_mag = 0.05
 const screenshake_mag_decay = 0.002
 const screenshake_jit_decay = 0.001
 
-var dash_tap_count = 0
-var dash_tap_spacing_timer = 0
 const dash_tap_spacing = 30
-var prev_ry_amount = 0
+var dash_tap_manager
+const dash_input_vector_map = {"thrust_forward" : Vector3.FORWARD, "thrust_backward" : Vector3.BACK,
+	"strafe_left" : Vector3.LEFT, "strafe_right" : Vector3.RIGHT, "strafe_up" : Vector3.UP,
+	"strafe_down" : Vector3.DOWN}
+
+class tap_manager:
+	var input
+	var prev_val = 0
+	
+	func _init(input_name : String):
+		input = input_name
+	
+	func get_input_name():
+		return input
+	
+	func step():
+		var ret_val = false
+		if Input.get_action_strength(input) > 0.5 and prev_val < 0.5:
+			ret_val = true
+		prev_val = Input.get_action_strength(input)
+		return ret_val
+
+class master_tap_manager:
+	var manager_list = Array()
+	var tap_input = -1
+	var tap_spacing_timer = 0
+	var tap_spacing
+	
+	func _init(spacing):
+		tap_spacing = spacing
+	
+	func add_manager(input_name : String):
+		manager_list.append(tap_manager.new(input_name))
+	
+	func step():
+		var i = 0
+		tap_spacing_timer -= 1
+		if tap_spacing_timer == 0:
+			tap_input = -1
+		var next_tap_input = -1
+		for m in manager_list:
+			if m.step() == true:
+				next_tap_input = i
+				tap_spacing_timer = tap_spacing
+				break
+			i += 1
+		if next_tap_input > -1:
+			if tap_input == -1:
+				tap_input = next_tap_input
+			elif next_tap_input == tap_input:
+				tap_input = -1
+				return manager_list[next_tap_input].get_input_name()
+		return null
 
 func respawn():
 	$"..".transform.origin = Vector3.UP
@@ -49,6 +99,14 @@ func _ready() -> void:
 	$"../../Camera3D/GUI".set_max_spd(int($"..".max_spd * 2))
 	$"../../Camera3D/GUI".set_max_energy(int($"..".max_energy))
 	$"../../Camera3D/GUI".set_max_health(int($"..".max_health))
+	
+	dash_tap_manager = master_tap_manager.new(dash_tap_spacing)
+	dash_tap_manager.add_manager("thrust_forward")
+	dash_tap_manager.add_manager("thrust_backward")
+	dash_tap_manager.add_manager("strafe_right")
+	dash_tap_manager.add_manager("strafe_left")
+	dash_tap_manager.add_manager("strafe_up")
+	dash_tap_manager.add_manager("strafe_down")
 
 func screenshake_set_direction(dir : Vector2):
 	screenshake_direction = dir
@@ -157,20 +215,9 @@ func _process(delta: float) -> void:
 	if Input.is_action_pressed("yaw_left"):
 		$"..".demand_yaw(-Input.get_action_strength("yaw_left"))
 	
-	# Dash
-	dash_tap_spacing_timer -= 1
-	if dash_tap_spacing_timer == 0:
-		dash_tap_count = 0
-	if Input.get_action_strength("thrust_forward") > 0.5 and prev_ry_amount < 0.5:
-		dash_tap_count += 1
-		dash_tap_spacing_timer = dash_tap_spacing
-	if dash_tap_count >= 2 or Input.is_action_just_pressed("dash"):
-		dash_tap_count = 0
-		dash_tap_spacing_timer = 0
-		$"..".dash()
-		#get_node("../..").set_slomo(0.2, [10, 30, 30])
-	# Update right stick y-axis previous amount
-	prev_ry_amount = Input.get_action_strength("thrust_forward")
+	var dash_input = dash_tap_manager.step()
+	if dash_input != null:
+		$"..".dash(dash_input_vector_map[dash_input])
 	
 	## Assign camera position
 	var cam = get_node("../../Camera3D")

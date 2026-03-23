@@ -7,7 +7,6 @@ func _process(delta: float) -> void:
 	var drv_lvl = $"../../ZealousJay".drive_lvl
 	var arm_lvl = $"../../ZealousJay".deflector_lvl
 	var health = $"../../ZealousJay".health
-	var dash_tap_count = $"../../ZealousJay/player".dash_tap_count
 	text = "Velocity vector: %s \nSpeed: %s\nClutch level: %s\nPoiser level: %s\n\
-		Drive level: %s\nDeflector level: %s\nDash tap: %s"\
-		% [vel_vec, vel_vec.length(), eng_lvl, poi_lvl, drv_lvl, arm_lvl, dash_tap_count]
+		Drive level: %s\nDeflector level: %s"\
+		% [vel_vec, vel_vec.length(), eng_lvl, poi_lvl, drv_lvl, arm_lvl]

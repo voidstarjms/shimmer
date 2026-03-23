@@ -81,7 +81,8 @@ const max_health_step = 20
 # Dash-related constants
 const dash_max_spd_multiplier = 2
 const dash_acc_multiplier = 2
-const dash_energy_cost = 200
+const dash_energy_cost = 400
+const dash_duration = 60
 
 # Physics handling scalars
 var max_spd
@@ -113,8 +114,8 @@ var poise_pos = Vector3.ZERO
 var poise_vel = Vector3.ZERO
 var poise_acc = Vector3.ZERO
 
-const dash_duration = 60
 var dash_counter = 0.0
+var dash_dir = Vector3.ZERO
 
 var max_health : int
 var max_energy : int
@@ -185,10 +186,11 @@ func demand_yaw(x : float):
 	yaw_demand = x
 
 # Dash mutator
-func dash():
+func dash(dir : Vector3):
 	if dash_counter == 0:
-		if consume_energy(200, false) > 0:
+		if consume_energy(dash_energy_cost, false) > 0:
 			$"./sfx_dash".playing = true
+			dash_dir = dir
 			dash_counter = dash_duration
 
 func calc_pve_thrust():
@@ -288,8 +290,25 @@ func _physics_process(_delta: float) -> void:
 	acc_vec = Vector3.ZERO
 	for i in 10:
 		# Apply equal and doubled forward acceleration if dashing
-		if dash_counter > 0 and (i == th.main_lt or i == th.main_rt):
-			acc_vec += dash_acc_multiplier * main_thrust * thruster_array[i].thrust_vec
+		if dash_counter > 0:
+			if i <= th.main_rt:
+				var main_dash_thrust = dash_acc_multiplier * main_thrust * thruster_array[i].thrust_vec
+				if dash_dir == Vector3.FORWARD:
+					acc_vec += main_dash_thrust
+				elif dash_dir == Vector3.BACK:
+					acc_vec -= main_dash_thrust
+			elif i >= th.vrt_fr_lt and i <= th.vrt_rr_rt:
+				var vrt_dash_thrust = dash_acc_multiplier * vrt_thrust * thruster_array[i].thrust_vec
+				if dash_dir == Vector3.UP:
+					acc_vec += vrt_dash_thrust
+				elif dash_dir == Vector3.DOWN:
+					acc_vec -= vrt_dash_thrust
+			elif i >= th.lat_fr_up:
+				var lat_dash_thrust = dash_acc_multiplier * lat_thrust * thruster_array[i].thrust_vec
+				if dash_dir == Vector3.RIGHT:
+					acc_vec += lat_dash_thrust
+				elif dash_dir == Vector3.LEFT:
+					acc_vec -= lat_dash_thrust
 		else:
 			acc_vec += thrust[i]
 	acc_vec *= Engine.time_scale
@@ -313,13 +332,16 @@ func _physics_process(_delta: float) -> void:
 	var actual_max_speed = max_spd * (dash_max_spd_multiplier if dash_counter > 0 else 1)
 	# Transform from local acceleration reference frame to global frame and apply acceleration 
 	var acc_transformed = transform.basis * acc_vec
+	# Apply gravity and drag
+	#acc_transformed += 9.8 * Vector3.DOWN * _delta * abs(transform.basis.z.dot(Vector3.DOWN))
+	#acc_transformed += pow(vel_vec.length(), 2) * 0.00109 * vel_vec.normalized() * _delta
 	vel_vec += acc_transformed * Engine.time_scale
 	var velocity_direction = vel_vec.normalized()
 	# Prevent speed from increasing if already above max speed
 	var prev_spd = prev_vel_vec.length()
 	if prev_spd > actual_max_speed and vel_vec.length() > prev_spd:
 		vel_vec = velocity_direction * prev_vel_vec.length()
-	# Decelerate exactly to zero
+	# Apply drag, decelerate exactly to zero
 	if vel_vec.length() < max_drag_decel:
 		vel_vec = Vector3.ZERO
 	else:
