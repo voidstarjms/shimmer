@@ -910,9 +910,7 @@ func _draw() -> void:
 		draw_line(lat_vel_tick_array[i][0], lat_vel_tick_array[i][1], gui_color)
 	
 	# Draw vertical speed gauge
-	var up_vec = player_transform.basis.y
-	var vrt_vel = player_vel.project(up_vec)
-	vrt_vel_gauge.set_value(vrt_vel.length() * sign(vrt_vel.dot(up_vec)))
+	vrt_vel_gauge.set_value(player_vel.y)
 	var vrt_vel_tick_array = vrt_vel_gauge.construct(view_rect)
 	draw_line(vrt_vel_tick_array[0][0][0], vrt_vel_tick_array[0][0][1], gui_color)
 	draw_line(vrt_vel_tick_array[0][1][0], vrt_vel_tick_array[0][1][1], gui_color)
