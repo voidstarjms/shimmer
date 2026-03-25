@@ -916,3 +916,12 @@ func _draw() -> void:
 	draw_line(vrt_vel_tick_array[0][1][0], vrt_vel_tick_array[0][1][1], gui_color)
 	for i in range(1, vrt_vel_tick_array.size()):
 		draw_line(vrt_vel_tick_array[i][0], vrt_vel_tick_array[i][1], gui_color)
+	
+	# Lat-vert poise indicator (maybe not final)
+	var wx = view_rect.size.x
+	var wy = view_rect.size.y
+	var poise_x = get_node("/root/Main/ZealousJay").poise_pos.x
+	var poise_y = get_node("/root/Main/ZealousJay").poise_pos.y
+	var lat_poise_rect = Rect2(Vector2(wx * 0.5 + wy * (-0.03 + 0.2 * poise_x), wy * (0.47 + 0.2 * poise_y)), Vector2(wy * 0.06, wy * 0.06))
+	draw_rect(Rect2(Vector2(wx * 0.5 - 0.025 * wy, wy * 0.475), Vector2(wy * 0.05, wy * 0.05)), gui_color, false)
+	draw_rect(lat_poise_rect, gui_color, false)

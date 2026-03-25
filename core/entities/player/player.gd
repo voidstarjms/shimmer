@@ -263,7 +263,6 @@ func _physics_process(delta: float) -> void:
 					-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
 				# Why is this necessary?
 				transform.basis.x *= -1
-		
 	
 	# Slideslip haptic vibration
 	if vel_vec != Vector3.ZERO:
@@ -271,4 +270,4 @@ func _physics_process(delta: float) -> void:
 		weak_haptic = haptic_strength * pow(sideslip_vector_dot, 2)
 	
 	if weak_haptic > 0 or strong_haptic > 0:
-		Input.start_joy_vibration(0, weak_haptic, strong_haptic, delta)
+		pass#Input.start_joy_vibration(0, weak_haptic, strong_haptic, delta)
