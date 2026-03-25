@@ -1,6 +1,7 @@
 extends Node3D
 
 const root3 = sqrt(3)
+const two_over_root3 = 2 / root3
 
 # DEBUG FLAG
 var debug = true
@@ -22,6 +23,8 @@ var shake_position = 0
 const poise_screenshake_mag = 0.05
 const screenshake_mag_decay = 0.002
 const screenshake_jit_decay = 0.001
+
+const haptic_strength = 0.2
 
 const dash_tap_spacing = 30
 var dash_tap_manager
@@ -79,17 +82,18 @@ class master_tap_manager:
 		return null
 
 func respawn():
-	$"..".transform.origin = Vector3.UP
-	$"..".transform.basis = Basis.FLIP_Z
-	$"..".vel_vec = Vector3.ZERO
-	$"..".acc_vec = Vector3.ZERO
-	$"..".poise_acc = Vector3.ZERO
-	$"..".poise_vel = Vector3.ZERO
-	$"..".poise_pos = Vector3.ZERO
-	$"..".health = $"..".max_health
-	$"..".position = start_pos
-	$"..".dash_counter = 0
-	$"..".set_inactionable_timer(30)
+	var p = get_parent()
+	p.transform.origin = Vector3.UP
+	p.transform.basis = Basis.FLIP_Z
+	p.vel_vec = Vector3.ZERO
+	p.acc_vec = Vector3.ZERO
+	p.poise_acc = Vector3.ZERO
+	p.poise_vel = Vector3.ZERO
+	p.poise_pos = Vector3.ZERO
+	p.health = p.max_health
+	p.position = start_pos
+	p.dash_counter = 0
+	p.set_inactionable_timer(30)
 
 func _ready() -> void:
 	await get_parent().ready
@@ -236,21 +240,35 @@ func _process(delta: float) -> void:
 		screenshake_step()
 
 func _physics_process(delta: float) -> void:
+	var vel_vec = $"..".vel_vec
+	var weak_haptic = 0
+	var strong_haptic = 0
+	
 	# Move actor and collide
-	var collision = $"..".move_and_collide($"..".vel_vec * delta)
+	var collision = get_parent().move_and_collide(vel_vec * delta)
 	if collision:
 		var collision_normal = collision.get_normal()
-		var vel_dot_normal = $"..".vel_vec.normalized().dot(collision_normal)
+		var vel_dot_normal = vel_vec.normalized().dot(collision_normal)
 		if vel_dot_normal < 0:
 			# Inflict crash damage based on angle of impact
-			var crash_damage = floor(-4 * vel_dot_normal * $"..".vel_vec.project(collision_normal).length())
+			var crash_damage = floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length())
 			if crash_damage > 0:
 				$"../sfx_dmg_crash".playing = true
-				$"..".take_damage(crash_damage)
+				get_parent().take_damage(crash_damage)
 				screenshake_set_jitter(0.04)
-			$"..".vel_vec = $"..".vel_vec.slide(collision_normal)
-			if $"..".vel_vec != Vector3.ZERO:
+				#strong_haptic = haptic_strength
+			get_parent().vel_vec = vel_vec.slide(collision_normal)
+			if get_parent().vel_vec != Vector3.ZERO:
 				transform.basis = Basis.looking_at(lerp(-transform.basis.z,
 					-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
 				# Why is this necessary?
 				transform.basis.x *= -1
+		
+	
+	# Slideslip haptic vibration
+	if vel_vec != Vector3.ZERO:
+		var sideslip_vector_dot = 1 - abs(vel_vec.normalized().dot(get_parent().transform.basis.z))
+		weak_haptic = haptic_strength * pow(sideslip_vector_dot, 2)
+	
+	if weak_haptic > 0 or strong_haptic > 0:
+		Input.start_joy_vibration(0, weak_haptic, strong_haptic, delta)
