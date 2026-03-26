@@ -55,25 +55,25 @@ const deflector_max_lvl = 19
 @export var drive_lvl : int
 @export var deflector_lvl : int
 # Equipment stat upgrade base values
-const max_spd_base = 24.2
-const main_thrust_base = 0.2
-const vrt_thrust_base = 0.12
-const lat_thrust_base = 0.12
-const thrust_pitch_base = 0.06
-const thrust_roll_base = 0.06
-const thrust_yaw_base = 0.06
-const poise_spring_const_base = 0.8
-const poise_damping_base = 8
+const max_spd_base = 48.2
+const main_thrust_base = 0.4
+const vrt_thrust_base = 0.24
+const lat_thrust_base = 0.24
+const thrust_pitch_base = 0.03
+const thrust_roll_base = 0.03
+const thrust_yaw_base = 0.03
+const poise_spring_const_base = 1.6
+const poise_damping_base = 16
 const max_energy_base = 1000
 const energy_regen_base = max_energy_base / 600
 const max_health_base = 100
 # Equipment stat upgrade steps
-const max_spd_step = 1
-const main_thrust_step = 0.005
-const strafe_thrust_step = 0.004
+const max_spd_step = 2
+const main_thrust_step = 0.01
+const strafe_thrust_step = 0.008
 const rotation_thrust_step = 0.001
-const poise_spring_const_step = 0.02
-const poise_damping_step = 0.05
+const poise_spring_const_step = 0.04
+const poise_damping_step = 0.1
 const max_energy_step = 50
 const energy_regen_step = energy_regen_base * float(max_energy_step) / max_energy_base
 const max_health_step = 20
