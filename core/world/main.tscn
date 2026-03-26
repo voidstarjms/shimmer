@@ -65,12 +65,6 @@ mesh = SubResource("BoxMesh_ig7tw")
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=536982465]
 transform = Transform3D(1, 0, 0, 0, -0.671837, 0.740699, 0, -0.740699, -0.671837, 0, 23.5699, 0)
 
-[node name="ZealousJay" parent="." unique_id=1593607656 instance=ExtResource("1_ig7tw")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 120, -200)
-rotation_edit_mode = 0
-motion_mode = 0
-max_drag_decel = 0.16
-
 [node name="Camera3D" type="Camera3D" parent="." unique_id=540330043]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
 script = ExtResource("2_0xm2m")
@@ -91,6 +85,12 @@ script = ExtResource("5_lquwl")
 stream = ExtResource("6_272bh")
 bus = &"GUI"
 script = ExtResource("7_5vw27")
+
+[node name="ZealousJay" parent="." unique_id=1593607656 instance=ExtResource("1_ig7tw")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 120, -200)
+rotation_edit_mode = 0
+motion_mode = 0
+max_drag_decel = 0.16
 
 [node name="BigCube" type="StaticBody3D" parent="." unique_id=1471078892]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 100, 0)

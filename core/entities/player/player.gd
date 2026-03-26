@@ -2,6 +2,7 @@ extends Node3D
 
 const root3 = sqrt(3)
 const two_over_root3 = 2 / root3
+const cam_path = "root/Main/Camera3D"
 
 # DEBUG FLAG
 var debug = true
@@ -10,19 +11,7 @@ var debug_F3_tap = false
 var debug_F4_tap = false
 var debug_F5_tap = false
 
-var cam_prev_y = Vector3.UP
-var cam_prev_z = Vector3.BACK
-var prev_screenshake_offset = Vector2.ZERO
-
 var start_pos
-
-var screenshake_direction = Vector2.ZERO
-var screenshake_magnitude = 0
-var screenshake_jitter = 0
-var shake_position = 0
-const poise_screenshake_mag = 0.05
-const screenshake_mag_decay = 0.002
-const screenshake_jit_decay = 0.001
 
 const haptic_strength = 0.2
 
@@ -97,7 +86,6 @@ func respawn():
 
 func _ready() -> void:
 	await get_parent().ready
-	await $"../../Camera3D/GUI".ready
 	
 	start_pos = $"..".position
 	$"../../Camera3D/GUI".set_max_spd(int($"..".max_spd * 2))
@@ -112,21 +100,10 @@ func _ready() -> void:
 	dash_tap_manager.add_manager("strafe_up")
 	dash_tap_manager.add_manager("strafe_down")
 
-func screenshake_set_direction(dir : Vector2):
-	screenshake_direction = dir
-
-func screenshake_set_magnitude(mag : float):
-	screenshake_magnitude = mag
-
-func screenshake_set_jitter(j : float):
-	screenshake_jitter = j
-
-func screenshake_step():
-	screenshake_magnitude = max(screenshake_magnitude - screenshake_mag_decay, 0)
-	screenshake_jitter = max(screenshake_jitter - screenshake_jit_decay, 0)
-
-func take_damage():
-	screenshake_set_jitter(1)
+func take_damage(damage : int):
+	get_parent().take_damage(damage)
+	# TODO yuck wtf
+	$"../../Camera3D".screenshake_set_jitter(0.4)
 
 func _process(delta: float) -> void:
 	if debug == true:
@@ -202,45 +179,9 @@ func _process(delta: float) -> void:
 	var dash_input = dash_tap_manager.step()
 	if dash_input != null:
 		$"..".dash(dash_input_vector_map[dash_input])
-	
-	## Assign camera position
-	var cam = get_node("../../Camera3D")
-	if cam != null:
-		# Camera vector interpolation
-		var cam_y_vec = cam_prev_y.lerp($"..".transform.basis.y, 0.1)
-		var cam_z_vec = cam_prev_z.lerp(Vector3.BACK if abs($"..".transform.basis.z.dot(Vector3.UP)) == 1 else lerp(-$"..".vel_vec, $"..".transform.basis.z, 1), 0.1)
-		cam_prev_z = cam_z_vec
-		cam_prev_y = cam_y_vec
-		
-		# Set camera position
-		cam_z_vec = 6 * cam_z_vec.normalized()
-		cam.transform.origin = $"..".transform.origin + cam_z_vec + cam_y_vec
-		
-		# Add screenshake
-		var screenshake_offset = sin(shake_position) * screenshake_magnitude * screenshake_direction + screenshake_jitter * Vector2.RIGHT.rotated(randf_range(0, TAU))
-		shake_position += delta
-		shake_position = fmod(shake_position, TAU)
-		screenshake_offset = lerp(prev_screenshake_offset, screenshake_offset, 0.2)
-		prev_screenshake_offset = screenshake_offset
-		cam.transform.origin += cam.transform.basis.x * screenshake_offset.x + cam.transform.basis.y * screenshake_offset.y
-		
-		# Define camera basis
-		#if abs(transform.basis.z.dot(Vector3.UP)) < 0.86:
-		cam.transform.basis.z = cam.transform.origin - $"..".transform.origin#(-($"..".transform.origin - cam.transform.origin)).normalized()
-		cam.transform.basis.x = cam.transform.basis.z.cross(Vector3.UP)
-		cam.transform.basis.y = cam.transform.basis.x.cross(cam.transform.basis.z)
-		
-		var poise_pos = $"..".poise_pos
-		var screenshake_dir = Vector2(poise_pos.project(cam.transform.basis.x).length(), poise_pos.project(cam.transform.basis.y).length()).normalized()
-		var screenshake_mag = poise_screenshake_mag * poise_pos.length() / root3
-		if screenshake_mag < 0.1 * poise_screenshake_mag:
-			screenshake_mag = 0
-		screenshake_set_direction(screenshake_dir)
-		screenshake_set_magnitude(screenshake_mag)
-		screenshake_step()
 
 func _physics_process(delta: float) -> void:
-	var vel_vec = $"..".vel_vec
+	var vel_vec = get_parent().vel_vec
 	var weak_haptic = 0
 	var strong_haptic = 0
 	
@@ -254,8 +195,7 @@ func _physics_process(delta: float) -> void:
 			var crash_damage = floor(-4 * vel_dot_normal * vel_vec.project(collision_normal).length())
 			if crash_damage > 0:
 				$"../sfx_dmg_crash".playing = true
-				get_parent().take_damage(crash_damage)
-				screenshake_set_jitter(0.04)
+				take_damage(crash_damage)
 				#strong_haptic = haptic_strength
 			get_parent().vel_vec = vel_vec.slide(collision_normal)
 			if get_parent().vel_vec != Vector3.ZERO:
@@ -263,6 +203,12 @@ func _physics_process(delta: float) -> void:
 					-transform.basis.z.slide(collision_normal), 0.05), transform.basis.y)
 				# Why is this necessary?
 				transform.basis.x *= -1
+	
+	# Update camera
+	# TODO How do I do this cleanly
+	var cam = $"../../Camera3D"
+	cam.set_tracking_transform(get_parent().transform)
+	cam.set_tracking_velocity(vel_vec)
 	
 	# Slideslip haptic vibration
 	if vel_vec != Vector3.ZERO:
