@@ -810,7 +810,7 @@ func _ready() -> void:
 	var energy_bar_pos = Vector2(1 - health_bar_sz.x - health_bar_x_margin, health_bar_y)
 	energy_bar = BarGauge.new(energy_bar_pos, health_bar_sz, [energy_color, energy_color], 0)
 	energy_bar.set_framing(0.002, gui_color, 0, 200)
-	energy_bar.set_bar2(1, Color.WHITE)
+	energy_bar.set_bar2(10, Color.WHITE)
 	
 	get_window().size_changed.connect(_on_window_resized)
 	_on_window_resized()
