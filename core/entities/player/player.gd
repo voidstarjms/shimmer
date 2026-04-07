@@ -80,6 +80,7 @@ func respawn():
 	p.poise_vel = Vector3.ZERO
 	p.poise_pos = Vector3.ZERO
 	p.health = p.max_health
+	p.energy = p.max_energy
 	p.position = start_pos
 	p.dash_counter = 0
 	p.set_inactionable_timer(30)
@@ -120,7 +121,6 @@ func _process(delta: float) -> void:
 				if $"..".clutch_lvl < $"..".clutch_max_lvl:
 					$"..".clutch_lvl += 1
 			$"..".compute_handling_stats()
-			
 			# Update max display values for lateral and vertical velocity gauges
 			$"../../Camera3D/GUI".set_max_spd(int($"..".max_spd * 2))
 		if !Input.is_key_pressed(KEY_F2):
