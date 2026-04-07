@@ -63,7 +63,7 @@ transform = Transform3D(3.821371e-16, 8.742278e-09, -0.2, 0.2, -8.742278e-09, 0,
 material_override = SubResource("StandardMaterial3D_1jxqw")
 mesh = ExtResource("3_i3pqv")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="." index="3" unique_id=303521201]
+[node name="collision_lon" type="CollisionShape3D" parent="." index="3" unique_id=303521201]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003540039, -0.02154541, 0.045440674)
 shape = SubResource("BoxShape3D_1jxqw")
 
@@ -71,6 +71,6 @@ shape = SubResource("BoxShape3D_1jxqw")
 volume_db = -20.789
 bus = &"Player Dash"
 
-[node name="CollisionShape3D2" type="CollisionShape3D" parent="." index="7" unique_id=1385595910]
+[node name="collision_lat" type="CollisionShape3D" parent="." index="7" unique_id=1385595910]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0076904297, 0.061769485, 0.092041016)
 shape = SubResource("BoxShape3D_6q2tb")
