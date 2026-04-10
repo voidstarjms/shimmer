@@ -43,8 +43,41 @@ data = {
 [sub_resource type="ImageTexture3D" id="ImageTexture3D_2hs0m"]
 _images = Array[Image]([SubResource("Image_gblnk"), SubResource("Image_p8nb0"), SubResource("Image_7cvy2"), SubResource("Image_7xlec")])
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1jxqw"]
-albedo_color = Color(0, 0, 1, 1)
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_6q2tb"]
+shading_mode = 2
+diffuse_mode = 1
+specular_mode = 2
+albedo_color = Color(0.83, 0.83, 0.83, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_oqi3v"]
+shading_mode = 2
+diffuse_mode = 1
+specular_mode = 2
+albedo_color = Color(0.19, 0.35200006, 1, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uftn6"]
+shading_mode = 2
+diffuse_mode = 1
+albedo_color = Color(0.009208327, 0.21840075, 0.2899395, 1)
+roughness = 0.08
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pu12l"]
+shading_mode = 2
+diffuse_mode = 1
+specular_mode = 2
+albedo_color = Color(0.08020326, 2.0455568e-06, 0.41494793, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_djlfe"]
+shading_mode = 2
+diffuse_mode = 1
+specular_mode = 2
+albedo_color = Color(0.8798123, 0.7650276, 7.70092e-07, 1)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_r3yej"]
+shading_mode = 2
+diffuse_mode = 1
+specular_mode = 2
+albedo_color = Color(0.12225223, 0.12225223, 0.12225223, 1)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_1jxqw"]
 size = Vector3(0.4020996, 0.29406738, 1.5426636)
@@ -60,8 +93,13 @@ script = ExtResource("1_4flbx")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." index="1" unique_id=1089269929]
 transform = Transform3D(3.821371e-16, 8.742278e-09, -0.2, 0.2, -8.742278e-09, 0, -8.742278e-09, -0.2, -8.742278e-09, 0, 0, 0)
-material_override = SubResource("StandardMaterial3D_1jxqw")
 mesh = ExtResource("3_i3pqv")
+surface_material_override/0 = SubResource("StandardMaterial3D_6q2tb")
+surface_material_override/1 = SubResource("StandardMaterial3D_oqi3v")
+surface_material_override/2 = SubResource("StandardMaterial3D_uftn6")
+surface_material_override/3 = SubResource("StandardMaterial3D_pu12l")
+surface_material_override/4 = SubResource("StandardMaterial3D_djlfe")
+surface_material_override/5 = SubResource("StandardMaterial3D_r3yej")
 
 [node name="collision_lon" type="CollisionShape3D" parent="." index="3" unique_id=303521201]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.003540039, -0.02154541, 0.045440674)
